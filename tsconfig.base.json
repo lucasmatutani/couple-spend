@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@splitwise/domain": ["./packages/domain/src/index.ts"],
+      "@splitwise/shared": ["./packages/shared/src/index.ts"],
+      "@splitwise/import-core": ["./packages/import-core/src/index.ts"],
+      "@splitwise/import-ofx": ["./packages/import-ofx/src/index.ts"],
+      "@splitwise/import-csv": ["./packages/import-csv/src/index.ts"],
+      "@splitwise/categorization": ["./packages/categorization/src/index.ts"]
+    }
+  }
+}

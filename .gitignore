@@ -1,36 +1,41 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.js
 
-# testing
-/coverage
+# Build outputs
+dist/
+.next/
+out/
+build/
 
-# next.js
-/.next/
-/out/
+# Turborepo cache
+.turbo/
 
-# production
-/build
+# Testing
+coverage/
 
-# misc
+# Local env files — use .env.example as the template
+.env
+.env.local
+.env.*.local
+
+# Supabase local state
+infra/supabase/.temp/
+
+# Vercel
+.vercel
+
+# TypeScript incremental build info
+*.tsbuildinfo
+next-env.d.ts
+
+# OS artifacts
 .DS_Store
 *.pem
 
-# debug
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+pnpm-debug.log*

@@ -1,0 +1,2 @@
+-- Seed file for local development
+-- Run with: pnpm supabase db reset

@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "lib": ["dom", "dom.iterable", "ES2022"],
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@splitwise/domain": ["../../packages/domain/src/index.ts"],
+      "@splitwise/shared": ["../../packages/shared/src/index.ts"],
+      "@splitwise/import-core": ["../../packages/import-core/src/index.ts"],
+      "@splitwise/import-ofx": ["../../packages/import-ofx/src/index.ts"],
+      "@splitwise/import-csv": ["../../packages/import-csv/src/index.ts"],
+      "@splitwise/categorization": ["../../packages/categorization/src/index.ts"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
