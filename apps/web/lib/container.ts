@@ -23,3 +23,15 @@ export function getIndividualBudgetUseCase(): CalculateIndividualBudgetUseCase {
     new SupabaseInvestmentRepository(),
   )
 }
+
+export function getIncomeRepository(): SupabaseIncomeRepository {
+  return new SupabaseIncomeRepository()
+}
+
+export function getPersonalExpenseRepository(): SupabasePersonalExpenseRepository {
+  return new SupabasePersonalExpenseRepository()
+}
+
+export function getInvestmentRepository(): SupabaseInvestmentRepository {
+  return new SupabaseInvestmentRepository()
+}

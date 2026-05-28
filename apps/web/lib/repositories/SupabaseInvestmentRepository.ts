@@ -4,6 +4,7 @@ import {
   Money,
   toInvestmentId,
   toUserId,
+  type InvestmentId,
   type InvestmentRepository,
   type UserId,
   type YearMonth,
@@ -35,5 +36,24 @@ export class SupabaseInvestmentRepository implements InvestmentRepository {
         createdAt: new Date(row.created_at),
       }),
     )
+  }
+
+  async save(investment: Investment): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('investments').upsert({
+      id: investment.id,
+      owner_id: investment.ownerId,
+      occurred_at: investment.occurredAt.toISOString().split('T')[0]!,
+      amount_cents: investment.amount.cents,
+      asset_class: investment.assetClass,
+      description: investment.description,
+    })
+    if (error) throw new Error(`Failed to save investment: ${error.message}`)
+  }
+
+  async delete(id: InvestmentId): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('investments').delete().eq('id', id)
+    if (error) throw new Error(`Failed to delete investment: ${error.message}`)
   }
 }

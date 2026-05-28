@@ -5,6 +5,7 @@ import {
   toCategoryId,
   toPersonalExpenseId,
   toUserId,
+  type PersonalExpenseId,
   type PersonalExpenseRepository,
   type UserId,
   type YearMonth,
@@ -38,5 +39,26 @@ export class SupabasePersonalExpenseRepository implements PersonalExpenseReposit
         importedAt: new Date(row.imported_at),
       }),
     )
+  }
+
+  async save(expense: PersonalExpense): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('personal_expenses').upsert({
+      id: expense.id,
+      owner_id: expense.ownerId,
+      category_id: expense.categoryId,
+      occurred_at: expense.occurredAt.toISOString().split('T')[0]!,
+      amount_cents: expense.amount.cents,
+      description: expense.description,
+      source_id: expense.sourceId,
+      external_id: expense.externalId,
+    })
+    if (error) throw new Error(`Failed to save personal expense: ${error.message}`)
+  }
+
+  async delete(id: PersonalExpenseId): Promise<void> {
+    const supabase = await createClient()
+    const { error } = await supabase.from('personal_expenses').delete().eq('id', id)
+    if (error) throw new Error(`Failed to delete personal expense: ${error.message}`)
   }
 }

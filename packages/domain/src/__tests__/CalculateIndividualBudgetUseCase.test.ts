@@ -118,12 +118,18 @@ function makeRepos({
     },
     personalExpenseRepo: {
       findByOwnerAndMonth: async () => personalExpenses,
+      save: async () => { throw new Error('not implemented') },
+      delete: async () => { throw new Error('not implemented') },
     },
     incomeRepo: {
       findByOwnerAndMonth: async () => incomes,
+      save: async () => { throw new Error('not implemented') },
+      delete: async () => { throw new Error('not implemented') },
     },
     investmentRepo: {
       findByOwnerAndMonth: async () => investments,
+      save: async () => { throw new Error('not implemented') },
+      delete: async () => { throw new Error('not implemented') },
     },
   }
 }
