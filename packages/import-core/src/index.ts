@@ -1,3 +1,4 @@
+export { TransactionSourceUnavailableError } from './domain/errors.js'
 export type { RawTransaction } from './domain/RawTransaction.js'
 export type { ImportedTransaction } from './domain/ImportedTransaction.js'
 export type { FetchParams, FetchResult, TransactionSource } from './domain/ports/TransactionSource.js'

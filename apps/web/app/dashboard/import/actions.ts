@@ -10,6 +10,7 @@ import { checkCanImportMonth, PlanLimitError } from '@/lib/plan-guard'
 import { OfxFileAdapter } from '@splitwise/import-ofx'
 import { CsvFileAdapter, ITAU_MAPPING, PICPAY_MAPPING } from '@splitwise/import-csv'
 import type { CsvColumnMapping } from '@splitwise/import-csv'
+import { getOpenFinanceSource } from '@/lib/import-sources'
 import type { ImportPreview, ReviewRow } from './types'
 
 type ProcessResult =
@@ -129,4 +130,62 @@ export async function confirmImport(rows: ReviewRow[], householdId: string): Pro
   revalidatePath('/dashboard/household')
   revalidatePath('/dashboard/import')
   return { success: true, imported: toSave.length, skipped: skipped + (rows.length - included.length) }
+}
+
+export async function importFromConnectedAccount(accountId: string): Promise<ProcessResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  try {
+    await checkCanImportMonth(toUserId(user.id), YearMonth.current())
+  } catch (err) {
+    if (err instanceof PlanLimitError) return { success: false, error: 'plan_limit' }
+    throw err
+  }
+
+  const { data: account } = await supabase
+    .from('connected_accounts')
+    .select('provider_item_id, institution_name')
+    .eq('id', accountId)
+    .single()
+  if (!account) return { success: false, error: 'Conta conectada não encontrada' }
+
+  const household = await new SupabaseHouseholdRepository().findFirstByMember(toUserId(user.id))
+  if (!household) return { success: false, error: 'Household não encontrado' }
+
+  const householdId = household.id as string
+  const ownerId = user.id
+
+  const dryRunRepo = {
+    existsByExternalId: async () => false,
+    saveBatch: async () => {},
+  }
+  const defaultResolver = {
+    resolve: async () => ({ categoryId: 'other', confidence: 0.1, source: 'default' as const }),
+  }
+  const defaultPolicy = { apply: () => 'EQUAL' as const }
+  const systemClock = { now: () => new Date() }
+
+  const { ImportTransactionsUseCase } = await import('@splitwise/import-core')
+  const useCase = new ImportTransactionsUseCase(dryRunRepo, defaultResolver, defaultPolicy, systemClock)
+
+  const source = getOpenFinanceSource(account.provider_item_id, account.institution_name)
+
+  const to = new Date()
+  const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+  try {
+    const summary = await useCase.execute(source, { dateRange: { from, to } }, ownerId, householdId)
+    const preview: ImportPreview = {
+      transactions: summary.importedTransactions,
+      warnings: summary.warnings,
+      householdId,
+    }
+    return { success: true, preview }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Erro ao buscar transações' }
+  }
 }

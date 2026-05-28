@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { processImport, confirmImport } from '../actions'
+import { processImport, confirmImport, importFromConnectedAccount } from '../actions'
+import type { ConnectedAccountSummary } from '../page'
 import type { ImportPreview, ReviewRow } from '../types'
 
 type Step = 1 | 2 | 3 | 4
@@ -37,9 +38,12 @@ function formatCents(cents: number): string {
   return `${cents < 0 ? '-' : ''}R$ ${(abs / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 }
 
-type Props = { searchParamsPromise: Promise<{ step?: string }> }
+type Props = {
+  searchParamsPromise: Promise<{ step?: string }>
+  connectedAccounts?: ConnectedAccountSummary[]
+}
 
-export default function ImportWizard({ searchParamsPromise }: Props) {
+export default function ImportWizard({ searchParamsPromise, connectedAccounts = [] }: Props) {
   const params = use(searchParamsPromise)
   const [step, setStep] = useState<Step>((parseInt(params.step ?? '1') as Step) || 1)
   const [file, setFile] = useState<File | null>(null)
@@ -115,12 +119,71 @@ export default function ImportWizard({ searchParamsPromise }: Props) {
     setStep(4)
   }
 
+  async function handleConnectedAccountImport(accountId: string) {
+    setLoading(true)
+    setError(null)
+    setPlanLimit(false)
+    setStep(2)
+
+    const result = await importFromConnectedAccount(accountId)
+    setLoading(false)
+
+    if (!result.success) {
+      if (result.error === 'plan_limit') { setPlanLimit(true); setStep(1) }
+      else { setError(result.error); setStep(1) }
+      return
+    }
+
+    const pv = result.preview
+    setPreview(pv)
+
+    const reviewRows: ReviewRow[] = pv.transactions.map((t, i) => ({
+      idx: i,
+      externalId: t.raw.externalId,
+      occurredAt: t.raw.occurredAt instanceof Date
+        ? t.raw.occurredAt.toISOString().split('T')[0]!
+        : String(t.raw.occurredAt).split('T')[0]!,
+      description: t.raw.description,
+      amountFormatted: formatCents(t.raw.amountCents),
+      amountCents: t.raw.amountCents,
+      categoryId: t.categoryId,
+      categoryConfidence: t.categoryConfidence,
+      categorySource: t.categorySource,
+      splitRule: t.splitRule,
+      excluded: false,
+    }))
+
+    reviewRows.sort((a, b) => a.categoryConfidence - b.categoryConfidence)
+    setRows(reviewRows)
+    setStep(3)
+  }
+
   // Step 1 — Upload
   if (step === 1) {
     const isOfx = file?.name.endsWith('.ofx')
     return (
       <div className="space-y-6 max-w-xl">
         <h2 className="text-2xl font-bold">Importar transações</h2>
+
+        {connectedAccounts.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Open Finance</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {connectedAccounts.map((account) => (
+                <Button
+                  key={account.id}
+                  variant="outline"
+                  className="w-full justify-start"
+                  disabled={loading}
+                  onClick={() => handleConnectedAccountImport(account.id)}
+                >
+                  Importar de {account.institution_name}
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader><CardTitle className="text-base">Selecionar arquivo</CardTitle></CardHeader>
           <CardContent className="space-y-4">

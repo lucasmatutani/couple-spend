@@ -19,6 +19,7 @@
     "@splitwise/categorization": "workspace:*",
     "@splitwise/domain": "workspace:*",
     "@splitwise/import-core": "workspace:*",
+    "@splitwise/import-open-finance": "workspace:*",
     "@splitwise/shared": "workspace:*",
     "@stripe/stripe-js": "^9.7.0",
     "@supabase/ssr": "^0.5.2",
