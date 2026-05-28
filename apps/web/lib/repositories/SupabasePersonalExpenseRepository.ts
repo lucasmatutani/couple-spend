@@ -1,0 +1,42 @@
+import { createClient } from '@/lib/supabase/server'
+import {
+  Money,
+  PersonalExpense,
+  toCategoryId,
+  toPersonalExpenseId,
+  toUserId,
+  type PersonalExpenseRepository,
+  type UserId,
+  type YearMonth,
+} from '@splitwise/domain'
+
+export class SupabasePersonalExpenseRepository implements PersonalExpenseRepository {
+  // RLS on personal_expenses uses owner_id = auth.uid().
+
+  async findByOwnerAndMonth(_ownerId: UserId, month: YearMonth): Promise<PersonalExpense[]> {
+    const supabase = await createClient()
+    const start = month.startDate().toISOString().split('T')[0]!
+    const end = month.endDate().toISOString().split('T')[0]!
+
+    const { data, error } = await supabase
+      .from('personal_expenses')
+      .select('*')
+      .gte('occurred_at', start)
+      .lte('occurred_at', end)
+
+    if (error) throw new Error(`Failed to fetch personal expenses: ${error.message}`)
+    return (data ?? []).map((row) =>
+      PersonalExpense.create({
+        id: toPersonalExpenseId(row.id),
+        ownerId: toUserId(row.owner_id),
+        categoryId: toCategoryId(row.category_id),
+        occurredAt: new Date(row.occurred_at),
+        amount: Money.of(row.amount_cents),
+        description: row.description,
+        sourceId: row.source_id,
+        externalId: row.external_id,
+        importedAt: new Date(row.imported_at),
+      }),
+    )
+  }
+}

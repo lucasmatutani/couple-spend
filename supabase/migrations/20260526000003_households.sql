@@ -131,7 +131,7 @@ create policy users_select_household_peers on public.users
   using (
     exists (
       select 1 from public.household_members hm
-      where hm.user_id      = id                              -- the user being evaluated
-        and hm.household_id = any(public.get_my_household_ids())  -- shares a household with me
+      where hm.user_id      = id                                       -- the user being evaluated
+        and hm.household_id in (select public.get_my_household_ids())  -- shares a household with me
     )
   );

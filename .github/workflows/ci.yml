@@ -53,7 +53,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
       - name: Test
-        run: pnpm test -- --run
+        run: pnpm test
 
   lint:
     name: Lint

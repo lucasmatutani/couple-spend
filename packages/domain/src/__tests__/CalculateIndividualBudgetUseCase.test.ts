@@ -107,9 +107,14 @@ function makeRepos({
     householdRepo: {
       findById: async (id: HouseholdId) => households.find((h) => h.id === id) ?? null,
       findByMember: async () => households,
+      findFirstByMember: async () => households[0] ?? null,
+      create: async () => { throw new Error('not implemented') },
+      addMember: async () => { throw new Error('not implemented') },
     },
     expenseRepo: {
       findByHouseholdAndMonth: async () => expenses,
+      save: async () => { throw new Error('not implemented') },
+      delete: async () => { throw new Error('not implemented') },
     },
     personalExpenseRepo: {
       findByOwnerAndMonth: async () => personalExpenses,

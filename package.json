@@ -8,12 +8,11 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
-    "gen:types": "supabase gen types typescript --local --workdir infra/supabase > packages/shared/src/database.types.ts",
-    "supabase": "supabase --workdir infra/supabase",
-    "supabase:start": "supabase start --workdir infra/supabase",
-    "supabase:stop": "supabase stop --workdir infra/supabase",
-    "supabase:reset": "supabase db reset --workdir infra/supabase",
-    "supabase:status": "supabase status --workdir infra/supabase"
+    "gen:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:status": "supabase status"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

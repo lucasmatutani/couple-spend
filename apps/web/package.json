@@ -12,6 +12,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
     "@splitwise/categorization": "workspace:*",
     "@splitwise/domain": "workspace:*",
     "@splitwise/import-core": "workspace:*",
@@ -31,11 +35,11 @@
   "devDependencies": {
     "@playwright/test": "^1.49.0",
     "@types/node": "^22.0.0",
-    "dotenv": "^16.4.7",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^16.4.7",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.1.7",
     "jsdom": "^25.0.1",

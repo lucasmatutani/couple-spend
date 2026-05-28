@@ -44,6 +44,7 @@ export type { IncomeRepository } from './ports/IncomeRepository.js'
 export type { InvestmentRepository } from './ports/InvestmentRepository.js'
 export type { HouseholdRepository } from './ports/HouseholdRepository.js'
 export type { UserRepository, UserProfile } from './ports/UserRepository.js'
+export type { CategoryRepository, CategoryRow } from './ports/CategoryRepository.js'
 
 // Use cases
 export { CalculateHouseholdSplitUseCase } from './use-cases/CalculateHouseholdSplitUseCase.js'

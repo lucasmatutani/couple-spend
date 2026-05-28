@@ -1,8 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
-import type { Database } from '@splitwise/shared'
 
 export function createClient() {
-  return createBrowserClient<Database>(
+  // No <Database> generic — see lib/supabase/server.ts for explanation.
+  return createBrowserClient(
     process.env['NEXT_PUBLIC_SUPABASE_URL']!,
     process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']!,
   )

@@ -56,10 +56,15 @@ function makeRepos(expenses: Expense[]) {
   const householdRepo: HouseholdRepository = {
     findById: async (id: HouseholdId) => (id === HH_ID ? makeHousehold() : null),
     findByMember: async () => [],
+    findFirstByMember: async () => null,
+    create: async () => { throw new Error('not implemented') },
+    addMember: async () => { throw new Error('not implemented') },
   }
 
   const expenseRepo: ExpenseRepository = {
     findByHouseholdAndMonth: async () => expenses,
+    save: async () => { throw new Error('not implemented') },
+    delete: async () => { throw new Error('not implemented') },
   }
 
   const userRepo: UserRepository = {
@@ -165,6 +170,9 @@ describe('CalculateHouseholdSplitUseCase', () => {
     const householdRepo: HouseholdRepository = {
       findById: async () => null,
       findByMember: async () => [],
+      findFirstByMember: async () => null,
+      create: async () => { throw new Error('not implemented') },
+      addMember: async () => { throw new Error('not implemented') },
     }
     const useCase = new CalculateHouseholdSplitUseCase(householdRepo, expenseRepo, userRepo)
 

@@ -7,5 +7,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     passWithNoTests: true,
+    // e2e tests run via Playwright (pnpm test:e2e), not Vitest
+    exclude: ['tests/e2e/**', 'node_modules/**'],
   },
 })
