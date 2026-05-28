@@ -8,6 +8,7 @@ import { toUserId } from '@splitwise/domain'
 import { generateInviteToken } from '@/lib/invite'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import InviteSection from './components/InviteSection'
+import AddPartnerSection from './components/AddPartnerSection'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -63,13 +64,29 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Convidar participante</CardTitle>
+          <CardTitle className="text-base">Adicionar parceiro</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Compartilhe este link para adicionar um segundo participante ao seu lar. O link expira em 7 dias.
-          </p>
-          <InviteSection inviteUrl={inviteUrl} />
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Informe o e-mail do parceiro. Uma conta será criada automaticamente com uma senha
+              temporária enviada por e-mail.
+            </p>
+            <AddPartnerSection />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">ou compartilhe o link</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Compartilhe este link para o parceiro criar a própria conta. Expira em 7 dias.
+            </p>
+            <InviteSection inviteUrl={inviteUrl} />
+          </div>
         </CardContent>
       </Card>
 

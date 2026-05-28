@@ -41,6 +41,15 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // Users created with a temporary password must change it before doing anything else.
+  if (user?.user_metadata?.['must_change_password'] === true) {
+    if (!pathname.startsWith('/auth/update-password') && !pathname.startsWith('/api/')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/update-password'
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (!user && pathname.startsWith('/dashboard')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

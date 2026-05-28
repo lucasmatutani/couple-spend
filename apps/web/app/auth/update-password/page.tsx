@@ -28,7 +28,10 @@ export default function UpdatePasswordPage() {
     }
     setLoading(true)
     const supabase = createClient()
-    const { error: updateError } = await supabase.auth.updateUser({ password })
+    const { error: updateError } = await supabase.auth.updateUser({
+      password,
+      data: { must_change_password: false },
+    })
     if (updateError) {
       setError('Não foi possível atualizar a senha. Tente novamente.')
       setLoading(false)
@@ -41,8 +44,10 @@ export default function UpdatePasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Nova senha</CardTitle>
-          <CardDescription>Escolha uma nova senha para sua conta.</CardDescription>
+          <CardTitle>Crie sua senha</CardTitle>
+          <CardDescription>
+            Você está usando uma senha temporária. Escolha uma senha definitiva para continuar.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
