@@ -41,6 +41,9 @@ importers:
       '@splitwise/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@stripe/stripe-js':
+        specifier: ^9.7.0
+        version: 9.7.0
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.106.2)
@@ -68,6 +71,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.6(react@19.2.6)
+      stripe:
+        specifier: ^22.2.0
+        version: 22.2.0(@types/node@22.19.19)
       tailwind-merge:
         specifier: ^2.5.4
         version: 2.6.1
@@ -152,9 +158,6 @@ importers:
 
   packages/import-core:
     dependencies:
-      '@splitwise/domain':
-        specifier: workspace:*
-        version: link:../domain
       '@splitwise/shared':
         specifier: workspace:*
         version: link:../shared
@@ -1210,6 +1213,10 @@ packages:
 
   '@rushstack/eslint-patch@1.16.1':
     resolution: {integrity: sha512-TvZbIpeKqGQQ7X0zSCvPH9riMSFQFSggnfBjFZ1mEoILW+UuXCKwOoPcgjMwiUtRqFZ8jWhPJc4um14vC6I4ag==}
+
+  '@stripe/stripe-js@9.7.0':
+    resolution: {integrity: sha512-r1ElolvWXM4aYnZZVHvKW3EDL8JcwEuIgTuWxlB5lvC+YsvjkQ0gX35x9d8dTDubX395fViLVqkaolVs1PmIQQ==}
+    engines: {node: '>=12.16'}
 
   '@supabase/auth-js@2.106.2':
     resolution: {integrity: sha512-VcAjUErkHkhC5Jaf+g/G1qbkQrFh8edaCdHa7pxJmHUjkWKjT7UnYCtPA89XV0N0GIYRkEqJZw5V62CtOxTmBQ==}
@@ -2963,6 +2970,15 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
+  stripe@22.2.0:
+    resolution: {integrity: sha512-WFGpMOom9QZqso1kcnSwJsCdC1QHDlMoCOxBZRf3JraMzhkfw7dgSdD2a1CFZrqC+mzAfqeEtYILrZhWKIDruA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   styled-jsx@5.1.6:
     resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
     engines: {node: '>= 12.0.0'}
@@ -4092,6 +4108,8 @@ snapshots:
   '@rtsao/scc@1.1.0': {}
 
   '@rushstack/eslint-patch@1.16.1': {}
+
+  '@stripe/stripe-js@9.7.0': {}
 
   '@supabase/auth-js@2.106.2':
     dependencies:
@@ -6121,6 +6139,10 @@ snapshots:
   strip-bom@3.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@22.2.0(@types/node@22.19.19):
+    optionalDependencies:
+      '@types/node': 22.19.19
 
   styled-jsx@5.1.6(@babel/core@7.29.7)(react@19.2.6):
     dependencies:

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import { verifyInviteToken } from '@/lib/invite'
 import { toHouseholdId, toUserId } from '@splitwise/domain'
+import { checkCanAddMember, PlanLimitError } from '@/lib/plan-guard'
 
 export default async function JoinPage({
   params,
@@ -21,8 +22,20 @@ export default async function JoinPage({
 
   if (!user) redirect(`/login?next=/join/${encodeURIComponent(token)}`)
 
+  const householdId = toHouseholdId(verified.householdId)
+  const userId = toUserId(user.id)
+
+  try {
+    await checkCanAddMember(householdId, userId)
+  } catch (err) {
+    if (err instanceof PlanLimitError) {
+      redirect('/dashboard/billing?error=plan_limit')
+    }
+    throw err
+  }
+
   const repo = new SupabaseHouseholdRepository()
-  await repo.addMember(toHouseholdId(verified.householdId), toUserId(user.id))
+  await repo.addMember(householdId, userId)
 
   redirect('/dashboard')
 }

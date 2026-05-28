@@ -68,3 +68,7 @@ export type { IndividualBudgetSummary } from './use-cases/CalculateIndividualBud
 
 export { EvaluateGoalsUseCase } from './use-cases/EvaluateGoalsUseCase.js'
 export type { GoalEvaluation, GoalStatus } from './use-cases/EvaluateGoalsUseCase.js'
+
+// Billing
+export { getLimits, canAddMember, canImportMonth } from './billing/Plan.js'
+export type { PlanTier, PlanLimits } from './billing/Plan.js'

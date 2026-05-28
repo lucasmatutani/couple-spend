@@ -49,6 +49,7 @@ export default function ImportWizard({ searchParamsPromise }: Props) {
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [rows, setRows] = useState<ReviewRow[]>([])
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [planLimit, setPlanLimit] = useState(false)
   const router = useRouter()
 
   function handleFileDrop(e: React.DragEvent) {
@@ -69,7 +70,11 @@ export default function ImportWizard({ searchParamsPromise }: Props) {
     const result = await processImport(fd)
     setLoading(false)
 
-    if (!result.success) { setError(result.error); return }
+    if (!result.success) {
+      if (result.error === 'plan_limit') { setPlanLimit(true); setStep(1) }
+      else setError(result.error)
+      return
+    }
 
     const pv = result.preview
     setPreview(pv)
@@ -158,12 +163,23 @@ export default function ImportWizard({ searchParamsPromise }: Props) {
               </div>
             )}
 
+            {planLimit && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Seu plano atual não permite importar transações deste período.{' '}
+                <a href="/dashboard/billing" className="font-medium underline underline-offset-2">
+                  Fazer upgrade
+                </a>{' '}
+                para desbloquear mais histórico.
+              </div>
+            )}
+
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button
               className="w-full"
               disabled={!file || loading}
               onClick={async () => {
+                setPlanLimit(false)
                 setStep(2)
                 await handleProcess()
               }}

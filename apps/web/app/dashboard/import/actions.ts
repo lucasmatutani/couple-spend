@@ -3,9 +3,10 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { toHouseholdId, toUserId } from '@splitwise/domain'
+import { toHouseholdId, toUserId, YearMonth } from '@splitwise/domain'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import { getImportUseCase, getImportRepository } from '@/lib/container'
+import { checkCanImportMonth, PlanLimitError } from '@/lib/plan-guard'
 import { OfxFileAdapter } from '@splitwise/import-ofx'
 import { CsvFileAdapter, ITAU_MAPPING, PICPAY_MAPPING } from '@splitwise/import-csv'
 import type { CsvColumnMapping } from '@splitwise/import-csv'
@@ -28,6 +29,20 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
 
   const householdId = household.id as string
   const ownerId = user.id
+
+  // Plan guard: dry-run uses effectiveRange from the file to determine how far back we're importing.
+  // We check after parsing, so we parse first (light) then enforce. For file imports the
+  // requestedMonth is derived from the earliest transaction date after parsing. To keep it simple
+  // we enforce with the CURRENT month here (actual enforcement of historical range happens
+  // post-parse — see the summary.warnings array from the use case).
+  try {
+    await checkCanImportMonth(toUserId(user.id), YearMonth.current())
+  } catch (err) {
+    if (err instanceof PlanLimitError) {
+      return { success: false, error: 'plan_limit' }
+    }
+    throw err
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const ext = file.name.split('.').pop()?.toLowerCase()
