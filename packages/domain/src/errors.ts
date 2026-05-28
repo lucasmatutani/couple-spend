@@ -10,3 +10,4 @@ export class DomainError extends Error {
 export class InvalidSplitRuleError extends DomainError {}
 export class InvalidExpenseError extends DomainError {}
 export class InvalidMoneyError extends DomainError {}
+export class InvalidGoalError extends DomainError {}

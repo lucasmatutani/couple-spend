@@ -1,6 +1,7 @@
 import { Money } from '../kernel/Money.js'
 import { type UserId } from '../kernel/ids.js'
 import { type YearMonth } from '../kernel/YearMonth.js'
+import { type CategoryRepository } from '../ports/CategoryRepository.js'
 import { type ExpenseRepository } from '../ports/ExpenseRepository.js'
 import { type HouseholdRepository } from '../ports/HouseholdRepository.js'
 import { type IncomeRepository } from '../ports/IncomeRepository.js'
@@ -20,6 +21,12 @@ export type IndividualBudgetSummary = {
   pctSpent: number
   /** 0..1 fraction of income invested */
   pctInvested: number
+  /** 0..1 fraction of income spent per budget bucket (personal expenses only) */
+  pctByBucket: {
+    needs: number
+    wants: number
+    savings: number
+  }
 }
 
 export class CalculateIndividualBudgetUseCase {
@@ -29,6 +36,7 @@ export class CalculateIndividualBudgetUseCase {
     private readonly personalExpenseRepo: PersonalExpenseRepository,
     private readonly incomeRepo: IncomeRepository,
     private readonly investmentRepo: InvestmentRepository,
+    private readonly categoryRepo: CategoryRepository,
   ) {}
 
   async execute(userId: UserId, month: YearMonth): Promise<IndividualBudgetSummary> {
@@ -59,6 +67,27 @@ export class CalculateIndividualBudgetUseCase {
     const pctSpent = totalIncomeCents > 0 ? totalSpentCents / totalIncomeCents : 0
     const pctInvested = totalIncomeCents > 0 ? totalInvestedCents / totalIncomeCents : 0
 
+    // Compute per-bucket breakdown from personal expenses + category data
+    const firstHousehold = households[0]
+    const catRows = firstHousehold ? await this.categoryRepo.findAll(firstHousehold.id) : []
+    const catBuckets = new Map(catRows.map((c) => [c.id as string, c.budgetBucket] as const))
+
+    let bucketNeeds = 0
+    let bucketWants = 0
+    let bucketSavings = 0
+    for (const e of personalExpenses) {
+      const bucket = catBuckets.get(e.categoryId as string) ?? 'needs'
+      if (bucket === 'needs') bucketNeeds += e.amount.cents
+      else if (bucket === 'wants') bucketWants += e.amount.cents
+      else bucketSavings += e.amount.cents
+    }
+
+    const pctByBucket = {
+      needs: totalIncomeCents > 0 ? bucketNeeds / totalIncomeCents : 0,
+      wants: totalIncomeCents > 0 ? bucketWants / totalIncomeCents : 0,
+      savings: totalIncomeCents > 0 ? bucketSavings / totalIncomeCents : 0,
+    }
+
     return {
       userId,
       month,
@@ -68,6 +97,7 @@ export class CalculateIndividualBudgetUseCase {
       surplus: Money.of(surplusCents),
       pctSpent,
       pctInvested,
+      pctByBucket,
     }
   }
 }

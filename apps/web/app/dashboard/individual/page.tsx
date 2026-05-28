@@ -2,7 +2,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryRepository'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
-import { getIndividualBudgetUseCase, getIncomeRepository, getInvestmentRepository, getPersonalExpenseRepository } from '@/lib/container'
+import {
+  getIndividualBudgetUseCase,
+  getIncomeRepository,
+  getInvestmentRepository,
+  getPersonalExpenseRepository,
+  getGoalRepository,
+  getEvaluateGoalsUseCase,
+} from '@/lib/container'
 import { Money, YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
 import type { BudgetSummaryDto, CategoryDto, IncomeDto, InvestmentDto, PersonalExpenseDto } from './types'
 import IncomeSummaryCard from './components/IncomeSummaryCard'
@@ -10,6 +17,7 @@ import BudgetBreakdownBar from './components/BudgetBreakdownBar'
 import CategoryBreakdown from './components/CategoryBreakdown'
 import SurplusCard from './components/SurplusCard'
 import InvestmentSummaryCard from './components/InvestmentSummaryCard'
+import GoalStatusBanner from './components/GoalStatusBanner'
 
 export default async function IndividualPage({
   searchParams,
@@ -17,7 +25,9 @@ export default async function IndividualPage({
   searchParams: Promise<{ month?: string }>
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const userId = toUserId(user.id)
@@ -36,14 +46,16 @@ export default async function IndividualPage({
 
   const householdId = toHouseholdId(household.id)
 
-  // Compute current month summary and raw lists in parallel
-  const [summary, rawIncomes, rawPersonalExpenses, rawInvestments, categories] = await Promise.all([
-    getIndividualBudgetUseCase().execute(userId, month),
-    getIncomeRepository().findByOwnerAndMonth(userId, month),
-    getPersonalExpenseRepository().findByOwnerAndMonth(userId, month),
-    getInvestmentRepository().findByOwnerAndMonth(userId, month),
-    new SupabaseCategoryRepository().findAll(householdId),
-  ])
+  // Compute current month summary, raw lists, and goals in parallel
+  const [summary, rawIncomes, rawPersonalExpenses, rawInvestments, categories, allGoals] =
+    await Promise.all([
+      getIndividualBudgetUseCase().execute(userId, month),
+      getIncomeRepository().findByOwnerAndMonth(userId, month),
+      getPersonalExpenseRepository().findByOwnerAndMonth(userId, month),
+      getInvestmentRepository().findByOwnerAndMonth(userId, month),
+      new SupabaseCategoryRepository().findAll(householdId),
+      getGoalRepository().findByOwner(userId),
+    ])
 
   // 3-month moving average: average surplus of current + 2 prior months
   const prior2 = await Promise.all(
@@ -58,6 +70,12 @@ export default async function IndividualPage({
   )
   const allSurpluses = [summary, ...prior2].map((s) => s.surplus.cents)
   const avgSurplus3mCents = Math.round(allSurpluses.reduce((a, b) => a + b, 0) / allSurpluses.length)
+
+  // Filter goals applicable to this month
+  const activeGoals = allGoals.filter(
+    (g) => g.appliesToMonth === null || g.appliesToMonth.toString() === month.toString(),
+  )
+  const goalEvaluations = getEvaluateGoalsUseCase().execute(summary, activeGoals)
 
   const categoryMap = new Map(categories.map((c) => [c.id as string, c]))
 
@@ -126,6 +144,11 @@ export default async function IndividualPage({
       </div>
 
       <IncomeSummaryCard incomes={incomeDtos} totalIncomeCents={budgetSummary.totalIncomeCents} />
+
+      <GoalStatusBanner
+        evaluations={goalEvaluations}
+        totalIncomeCents={budgetSummary.totalIncomeCents}
+      />
 
       <CategoryBreakdown
         expenses={personalExpenseDtos}

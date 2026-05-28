@@ -23,7 +23,13 @@ export type {
 } from './kernel/ids.js'
 
 // Errors
-export { DomainError, InvalidSplitRuleError, InvalidExpenseError, InvalidMoneyError } from './errors.js'
+export {
+  DomainError,
+  InvalidSplitRuleError,
+  InvalidExpenseError,
+  InvalidMoneyError,
+  InvalidGoalError,
+} from './errors.js'
 
 // Value objects
 export { SplitRule } from './SplitRule.js'
@@ -36,6 +42,8 @@ export { Income } from './entities/Income.js'
 export { Investment } from './entities/Investment.js'
 export { Household } from './entities/Household.js'
 export type { HouseholdMember, MemberRole } from './entities/Household.js'
+export { Goal } from './entities/Goal.js'
+export type { GoalType } from './entities/Goal.js'
 
 // Ports
 export type { ExpenseRepository } from './ports/ExpenseRepository.js'
@@ -45,6 +53,7 @@ export type { InvestmentRepository } from './ports/InvestmentRepository.js'
 export type { HouseholdRepository } from './ports/HouseholdRepository.js'
 export type { UserRepository, UserProfile } from './ports/UserRepository.js'
 export type { CategoryRepository, CategoryRow } from './ports/CategoryRepository.js'
+export type { GoalRepository } from './ports/GoalRepository.js'
 
 // Use cases
 export { CalculateHouseholdSplitUseCase } from './use-cases/CalculateHouseholdSplitUseCase.js'
@@ -56,3 +65,6 @@ export type {
 
 export { CalculateIndividualBudgetUseCase } from './use-cases/CalculateIndividualBudgetUseCase.js'
 export type { IndividualBudgetSummary } from './use-cases/CalculateIndividualBudgetUseCase.js'
+
+export { EvaluateGoalsUseCase } from './use-cases/EvaluateGoalsUseCase.js'
+export type { GoalEvaluation, GoalStatus } from './use-cases/EvaluateGoalsUseCase.js'

@@ -19,6 +19,7 @@ import {
   type HouseholdId,
   type UserId,
 } from '../kernel/ids.js'
+import { type CategoryRepository } from '../ports/CategoryRepository.js'
 import { type ExpenseRepository } from '../ports/ExpenseRepository.js'
 import { type HouseholdRepository } from '../ports/HouseholdRepository.js'
 import { type IncomeRepository } from '../ports/IncomeRepository.js'
@@ -102,6 +103,7 @@ function makeRepos({
   personalExpenseRepo: PersonalExpenseRepository
   incomeRepo: IncomeRepository
   investmentRepo: InvestmentRepository
+  categoryRepo: CategoryRepository
 } {
   return {
     householdRepo: {
@@ -130,6 +132,10 @@ function makeRepos({
       findByOwnerAndMonth: async () => investments,
       save: async () => { throw new Error('not implemented') },
       delete: async () => { throw new Error('not implemented') },
+    },
+    categoryRepo: {
+      findAll: async () => [],
+      findById: async () => null,
     },
   }
 }
@@ -165,6 +171,7 @@ describe('CalculateIndividualBudgetUseCase', () => {
       repos.personalExpenseRepo,
       repos.incomeRepo,
       repos.investmentRepo,
+      repos.categoryRepo,
     )
 
     const summary = await useCase.execute(USER, MONTH)
@@ -190,6 +197,7 @@ describe('CalculateIndividualBudgetUseCase', () => {
       repos.personalExpenseRepo,
       repos.incomeRepo,
       repos.investmentRepo,
+      repos.categoryRepo,
     )
 
     const summary = await useCase.execute(USER, MONTH)
@@ -210,6 +218,7 @@ describe('CalculateIndividualBudgetUseCase', () => {
       repos.personalExpenseRepo,
       repos.incomeRepo,
       repos.investmentRepo,
+      repos.categoryRepo,
     )
 
     const summary = await useCase.execute(USER, MONTH)
@@ -228,6 +237,7 @@ describe('CalculateIndividualBudgetUseCase', () => {
       repos.personalExpenseRepo,
       repos.incomeRepo,
       repos.investmentRepo,
+      repos.categoryRepo,
     )
 
     const summary = await useCase.execute(USER, MONTH)

@@ -13,7 +13,6 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@splitwise/domain": "workspace:*",
     "@splitwise/shared": "workspace:*",
     "zod": "^3.23.8"
   },

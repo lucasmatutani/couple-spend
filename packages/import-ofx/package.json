@@ -13,7 +13,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@splitwise/import-core": "workspace:*"
+    "@splitwise/import-core": "workspace:*",
+    "ofx-js": "^1.1.1"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
