@@ -5,7 +5,9 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import RecurringScopeDialog from '@/components/RecurringScopeDialog'
 import { deletePersonalExpense } from '../actions'
+import { deletePersonalExpenseFuture } from '../recurring-actions'
 import AddPersonalExpenseSheet from './AddPersonalExpenseSheet'
 import type { CategoryDto, PersonalExpenseDto } from '../types'
 
@@ -38,10 +40,30 @@ type Filter = 'all' | 'needs' | 'wants' | 'savings'
 export default function CategoryBreakdown({ expenses, categories, totalIncomeCents }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [scopeTarget, setScopeTarget] = useState<PersonalExpenseDto | null>(null)
 
-  async function handleDelete(id: string) {
-    setDeleting(id)
-    await deletePersonalExpense(id)
+  async function handleDelete(expense: PersonalExpenseDto) {
+    if (expense.recurringPersonalExpenseId) {
+      setScopeTarget(expense)
+      return
+    }
+    setDeleting(expense.id)
+    await deletePersonalExpense(expense.id)
+    setDeleting(null)
+  }
+
+  async function handleDeleteSingle(expense: PersonalExpenseDto) {
+    setScopeTarget(null)
+    setDeleting(expense.id)
+    await deletePersonalExpense(expense.id)
+    setDeleting(null)
+  }
+
+  async function handleDeleteFuture(expense: PersonalExpenseDto) {
+    setScopeTarget(null)
+    if (!expense.recurringPersonalExpenseId) return
+    setDeleting(expense.id)
+    await deletePersonalExpenseFuture(expense.recurringPersonalExpenseId, expense.occurredAt)
     setDeleting(null)
   }
 
@@ -157,7 +179,7 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
                             variant="ghost"
                             className="h-5 w-5 text-muted-foreground hover:text-destructive"
                             disabled={deleting === e.id}
-                            onClick={() => handleDelete(e.id)}
+                            onClick={() => handleDelete(e)}
                           >
                             <Trash2 className="h-2.5 w-2.5" />
                           </Button>
@@ -171,6 +193,16 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
           </div>
         )}
       </CardContent>
+
+      {scopeTarget && (
+        <RecurringScopeDialog
+          mode="delete"
+          open={!!scopeTarget}
+          onCancel={() => setScopeTarget(null)}
+          onSingle={() => handleDeleteSingle(scopeTarget)}
+          onFuture={() => handleDeleteFuture(scopeTarget)}
+        />
+      )}
     </Card>
   )
 }

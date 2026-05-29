@@ -139,6 +139,7 @@ export type Database = {
           source_id: string
           external_id: string
           imported_at: string
+          recurring_expense_id: string | null
         }
         Insert: {
           id?: string
@@ -153,6 +154,7 @@ export type Database = {
           source_id?: string
           external_id?: string
           imported_at?: string
+          recurring_expense_id?: string | null
         }
         Update: {
           id?: string
@@ -167,6 +169,7 @@ export type Database = {
           source_id?: string
           external_id?: string
           imported_at?: string
+          recurring_expense_id?: string | null
         }
         Relationships: [
           { foreignKeyName: 'expenses_household_id_fkey'; columns: ['household_id']; referencedRelation: 'households'; referencedColumns: ['id'] },
@@ -185,6 +188,7 @@ export type Database = {
           source_id: string
           external_id: string
           imported_at: string
+          recurring_personal_expense_id: string | null
         }
         Insert: {
           id?: string
@@ -196,6 +200,7 @@ export type Database = {
           source_id?: string
           external_id?: string
           imported_at?: string
+          recurring_personal_expense_id?: string | null
         }
         Update: {
           id?: string
@@ -207,6 +212,7 @@ export type Database = {
           source_id?: string
           external_id?: string
           imported_at?: string
+          recurring_personal_expense_id?: string | null
         }
         Relationships: []
       }
@@ -354,6 +360,75 @@ export type Database = {
           connected_at?: string
           last_synced_at?: string | null
           status?: string
+        }
+        Relationships: []
+      }
+      recurring_expenses: {
+        Row: {
+          id: string
+          household_id: string
+          paid_by: string
+          category_id: string
+          amount_cents: number
+          description: string
+          split_rule_type: SplitRuleType
+          split_rule_payer_percent: number | null
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          household_id: string
+          paid_by: string
+          category_id: string
+          amount_cents: number
+          description: string
+          split_rule_type: SplitRuleType
+          split_rule_payer_percent?: number | null
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          household_id?: string
+          paid_by?: string
+          category_id?: string
+          amount_cents?: number
+          description?: string
+          split_rule_type?: SplitRuleType
+          split_rule_payer_percent?: number | null
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      recurring_personal_expenses: {
+        Row: {
+          id: string
+          owner_id: string
+          category_id: string
+          amount_cents: number
+          description: string
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          category_id: string
+          amount_cents: number
+          description: string
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          category_id?: string
+          amount_cents?: number
+          description?: string
+          active?: boolean
+          created_at?: string
         }
         Relationships: []
       }

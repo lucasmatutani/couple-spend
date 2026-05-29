@@ -1,16 +1,18 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryRepository'
-import { SupabaseExpenseRepository } from '@/lib/repositories/SupabaseExpenseRepository'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import { SupabaseUserRepository } from '@/lib/repositories/SupabaseUserRepository'
 import { getHouseholdSplitUseCase } from '@/lib/container'
 import { YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
-import type { CategoryDto, ExpenseDto, MemberBalanceDto, SettlementDto } from './types'
+import type { CategoryDto, ExpenseDto, MemberBalanceDto, RecurringExpenseDto, SettlementDto } from './types'
 import AddExpenseSheet from './components/AddExpenseSheet'
 import ExpenseList from './components/ExpenseList'
+import RecurringExpensesSheet from './components/RecurringExpensesSheet'
 import SettlementSuggestions from './components/SettlementSuggestions'
 import SplitSummaryCards from './components/SplitSummaryCards'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Repeat } from 'lucide-react'
 
 export default async function HouseholdPage({
   searchParams,
@@ -36,11 +38,25 @@ export default async function HouseholdPage({
   }
 
   const householdId = toHouseholdId(household.id)
+  const start = month.startDate().toISOString().split('T')[0]!
+  const end = month.endDate().toISOString().split('T')[0]!
 
-  const [summary, rawExpenses, categories] = await Promise.all([
+  const [summary, expenseRows, categories, recurringTemplates] = await Promise.all([
     getHouseholdSplitUseCase().execute(householdId, month),
-    new SupabaseExpenseRepository().findByHouseholdAndMonth(householdId, month),
+    supabase
+      .from('expenses')
+      .select('id, occurred_at, description, amount_cents, split_rule_type, split_rule_payer_percent, paid_by, category_id, household_id, recurring_expense_id')
+      .eq('household_id', household.id)
+      .gte('occurred_at', start)
+      .lte('occurred_at', end)
+      .order('occurred_at', { ascending: false }),
     new SupabaseCategoryRepository().findAll(householdId),
+    supabase
+      .from('recurring_expenses')
+      .select('*')
+      .eq('household_id', household.id)
+      .eq('active', true)
+      .order('created_at'),
   ])
 
   const memberIds = household.members.map((m) => m.userId)
@@ -67,18 +83,21 @@ export default async function HouseholdPage({
     amountCents: s.amount.cents,
   }))
 
-  const expenses: ExpenseDto[] = rawExpenses.map((e) => ({
-    id: e.id,
-    occurredAt: e.occurredAt.toISOString().split('T')[0]!,
-    description: e.description,
-    amountFormatted: e.amount.format(),
-    amountCents: e.amount.cents,
-    splitRuleType: e.splitRule.type,
-    splitRulePayerPercent: e.splitRule.payerPercent ?? null,
-    paidByDisplayName: profileMap.get(e.paidBy) ?? e.paidBy,
-    categoryName: categoryMap.get(e.categoryId) ?? 'Sem categoria',
-    categoryId: e.categoryId,
-    householdId: e.householdId,
+  const rows = expenseRows.data ?? []
+
+  const expenses: ExpenseDto[] = rows.map((r) => ({
+    id: r.id,
+    occurredAt: r.occurred_at,
+    description: r.description,
+    amountFormatted: `R$ ${(r.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    amountCents: r.amount_cents,
+    splitRuleType: r.split_rule_type,
+    splitRulePayerPercent: r.split_rule_payer_percent,
+    paidByDisplayName: profileMap.get(r.paid_by) ?? r.paid_by,
+    categoryName: categoryMap.get(r.category_id) ?? 'Sem categoria',
+    categoryId: r.category_id,
+    householdId: r.household_id,
+    recurringExpenseId: r.recurring_expense_id,
   }))
 
   const categoryDtos: CategoryDto[] = categories.map((c) => ({
@@ -87,21 +106,63 @@ export default async function HouseholdPage({
     defaultSplitRule: c.defaultSplitRule,
   }))
 
+  const recurringDtos: RecurringExpenseDto[] = (recurringTemplates.data ?? []).map((r) => ({
+    id: r.id,
+    description: r.description,
+    amountCents: r.amount_cents,
+    amountFormatted: `R$ ${(r.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    categoryId: r.category_id,
+    categoryName: categoryMap.get(r.category_id) ?? 'Sem categoria',
+    splitRuleType: r.split_rule_type,
+    splitRulePayerPercent: r.split_rule_payer_percent,
+  }))
+
+  const recurringTotalCents = rows
+    .filter((r) => r.recurring_expense_id !== null)
+    .reduce((sum, r) => sum + r.amount_cents, 0)
+
+  const recurringTotalFormatted = `R$ ${(recurringTotalCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Despesas da casa</h2>
-        <AddExpenseSheet
-          householdId={household.id}
-          categories={categoryDtos}
-          currentUserId={user.id}
-        />
+        <div className="flex gap-2">
+          <RecurringExpensesSheet
+            householdId={household.id}
+            categories={categoryDtos}
+            recurringExpenses={recurringDtos}
+            currentMonth={month.toString()}
+          />
+          <AddExpenseSheet
+            householdId={household.id}
+            categories={categoryDtos}
+            currentUserId={user.id}
+          />
+        </div>
       </div>
 
       <SplitSummaryCards
         memberBalances={memberBalances}
         totalExpensesFormatted={summary.totalExpenses.format()}
       />
+
+      {recurringTotalCents > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Repeat className="h-4 w-4" />
+              Despesas fixas no mês
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {rows.filter((r) => r.recurring_expense_id !== null).length} despesa(s) recorrente(s)
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {settlements.length > 0 && (
         <SettlementSuggestions settlements={settlements} month={month.toString()} />

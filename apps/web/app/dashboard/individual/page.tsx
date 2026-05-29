@@ -6,15 +6,17 @@ import {
   getIndividualBudgetUseCase,
   getIncomeRepository,
   getInvestmentRepository,
-  getPersonalExpenseRepository,
   getGoalRepository,
   getEvaluateGoalsUseCase,
 } from '@/lib/container'
 import { Money, YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
-import type { BudgetSummaryDto, CategoryDto, IncomeDto, InvestmentDto, PersonalExpenseDto } from './types'
+import { Repeat } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { BudgetSummaryDto, CategoryDto, IncomeDto, InvestmentDto, PersonalExpenseDto, RecurringPersonalExpenseDto } from './types'
 import IncomeSummaryCard from './components/IncomeSummaryCard'
 import BudgetBreakdownBar from './components/BudgetBreakdownBar'
 import CategoryBreakdown from './components/CategoryBreakdown'
+import RecurringPersonalExpensesSheet from './components/RecurringPersonalExpensesSheet'
 import SurplusCard from './components/SurplusCard'
 import InvestmentSummaryCard from './components/InvestmentSummaryCard'
 import GoalStatusBanner from './components/GoalStatusBanner'
@@ -45,19 +47,32 @@ export default async function IndividualPage({
   if (!household) redirect('/onboarding')
 
   const householdId = toHouseholdId(household.id)
+  const start = month.startDate().toISOString().split('T')[0]!
+  const end = month.endDate().toISOString().split('T')[0]!
 
-  // Compute current month summary, raw lists, and goals in parallel
-  const [summary, rawIncomes, rawPersonalExpenses, rawInvestments, categories, allGoals] =
+  const [summary, rawIncomes, personalExpenseRows, rawInvestments, categories, allGoals, recurringTemplates] =
     await Promise.all([
       getIndividualBudgetUseCase().execute(userId, month),
       getIncomeRepository().findByOwnerAndMonth(userId, month),
-      getPersonalExpenseRepository().findByOwnerAndMonth(userId, month),
+      // Direct query to include recurring_personal_expense_id
+      supabase
+        .from('personal_expenses')
+        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id')
+        .eq('owner_id', user.id)
+        .gte('occurred_at', start)
+        .lte('occurred_at', end),
       getInvestmentRepository().findByOwnerAndMonth(userId, month),
       new SupabaseCategoryRepository().findAll(householdId),
       getGoalRepository().findByOwner(userId),
+      supabase
+        .from('recurring_personal_expenses')
+        .select('*')
+        .eq('owner_id', user.id)
+        .eq('active', true)
+        .order('created_at'),
     ])
 
-  // 3-month moving average: average surplus of current + 2 prior months
+  // 3-month moving average
   const prior2 = await Promise.all(
     [1, 2].map((offset) => {
       const [y, m] = month.toString().split('-') as [string, string]
@@ -71,7 +86,6 @@ export default async function IndividualPage({
   const allSurpluses = [summary, ...prior2].map((s) => s.surplus.cents)
   const avgSurplus3mCents = Math.round(allSurpluses.reduce((a, b) => a + b, 0) / allSurpluses.length)
 
-  // Filter goals applicable to this month
   const activeGoals = allGoals.filter(
     (g) => g.appliesToMonth === null || g.appliesToMonth.toString() === month.toString(),
   )
@@ -103,17 +117,19 @@ export default async function IndividualPage({
     recurring: i.recurring,
   }))
 
-  const personalExpenseDtos: PersonalExpenseDto[] = rawPersonalExpenses.map((e) => {
-    const cat = categoryMap.get(e.categoryId)
+  const peRows = personalExpenseRows.data ?? []
+  const personalExpenseDtos: PersonalExpenseDto[] = peRows.map((r) => {
+    const cat = categoryMap.get(r.category_id)
     return {
-      id: e.id,
-      occurredAt: e.occurredAt.toISOString().split('T')[0]!,
-      amountFormatted: e.amount.format(),
-      amountCents: e.amount.cents,
-      description: e.description,
-      categoryId: e.categoryId,
+      id: r.id,
+      occurredAt: r.occurred_at,
+      amountFormatted: `R$ ${(r.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      amountCents: r.amount_cents,
+      description: r.description,
+      categoryId: r.category_id,
       categoryName: cat?.name ?? 'Sem categoria',
       budgetBucket: cat?.budgetBucket ?? 'needs',
+      recurringPersonalExpenseId: r.recurring_personal_expense_id,
     }
   })
 
@@ -132,9 +148,31 @@ export default async function IndividualPage({
     budgetBucket: c.budgetBucket,
   }))
 
+  const recurringPersonalDtos: RecurringPersonalExpenseDto[] = (recurringTemplates.data ?? []).map((r) => ({
+    id: r.id,
+    description: r.description,
+    amountCents: r.amount_cents,
+    amountFormatted: `R$ ${(r.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    categoryId: r.category_id,
+    categoryName: categoryMap.get(r.category_id)?.name ?? 'Sem categoria',
+  }))
+
+  const recurringTotalCents = peRows
+    .filter((r) => r.recurring_personal_expense_id !== null)
+    .reduce((sum, r) => sum + r.amount_cents, 0)
+
+  const recurringTotalFormatted = `R$ ${(recurringTotalCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Orçamento individual</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Orçamento individual</h2>
+        <RecurringPersonalExpensesSheet
+          categories={categoryDtos}
+          recurringExpenses={recurringPersonalDtos}
+          currentMonth={month.toString()}
+        />
+      </div>
 
       <BudgetBreakdownBar summary={budgetSummary} />
 
@@ -144,6 +182,23 @@ export default async function IndividualPage({
       </div>
 
       <IncomeSummaryCard incomes={incomeDtos} totalIncomeCents={budgetSummary.totalIncomeCents} />
+
+      {recurringTotalCents > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <Repeat className="h-4 w-4" />
+              Despesas fixas no mês
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {peRows.filter((r) => r.recurring_personal_expense_id !== null).length} despesa(s) recorrente(s)
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <GoalStatusBanner
         evaluations={goalEvaluations}

@@ -29,10 +29,22 @@ export type ExpenseDto = {
   categoryName: string
   categoryId: string
   householdId: string
+  recurringExpenseId: string | null
 }
 
 export type CategoryDto = {
   id: string
   name: string
   defaultSplitRule: string
+}
+
+export type RecurringExpenseDto = {
+  id: string
+  description: string
+  amountCents: number
+  amountFormatted: string
+  categoryId: string
+  categoryName: string
+  splitRuleType: string
+  splitRulePayerPercent: number | null
 }

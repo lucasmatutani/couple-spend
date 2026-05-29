@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,7 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import RecurringScopeDialog from '@/components/RecurringScopeDialog'
 import { deleteExpense } from '../actions'
+import { deleteExpenseFuture } from '../recurring-actions'
 import type { CategoryDto, ExpenseDto } from '../types'
 import EditExpenseSheet from './EditExpenseSheet'
 
@@ -37,17 +39,47 @@ type Props = {
   householdId: string
 }
 
+type ScopeIntent = { mode: 'edit' | 'delete'; expense: ExpenseDto }
+
 export default function ExpenseList({ expenses, categories, householdId }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [editTarget, setEditTarget] = useState<ExpenseDto | null>(null)
+  const [editScope, setEditScope] = useState<'single' | 'future' | null>(null)
+  const [scopeIntent, setScopeIntent] = useState<ScopeIntent | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  async function handleDelete() {
+  // Simple delete (non-recurring or scope='single')
+  async function handleDeleteConfirmed() {
     if (!deleteTarget) return
     setDeleting(true)
     await deleteExpense(deleteTarget)
     setDeleting(false)
     setDeleteTarget(null)
+  }
+
+  // Delete this + all future entries of the recurring series
+  async function handleDeleteFuture(expense: ExpenseDto) {
+    if (!expense.recurringExpenseId) return
+    setDeleting(true)
+    await deleteExpenseFuture(expense.recurringExpenseId, expense.occurredAt)
+    setDeleting(false)
+  }
+
+  function onClickDelete(expense: ExpenseDto) {
+    if (expense.recurringExpenseId) {
+      setScopeIntent({ mode: 'delete', expense })
+    } else {
+      setDeleteTarget(expense.id)
+    }
+  }
+
+  function onClickEdit(expense: ExpenseDto) {
+    if (expense.recurringExpenseId) {
+      setScopeIntent({ mode: 'edit', expense })
+    } else {
+      setEditTarget(expense)
+      setEditScope(null)
+    }
   }
 
   if (expenses.length === 0) {
@@ -77,7 +109,14 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
             {expenses.map((expense) => (
               <TableRow key={expense.id}>
                 <TableCell className="whitespace-nowrap">{expense.occurredAt}</TableCell>
-                <TableCell>{expense.description ?? '—'}</TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-1.5">
+                    {expense.recurringExpenseId && (
+                      <Repeat className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    )}
+                    {expense.description ?? '—'}
+                  </span>
+                </TableCell>
                 <TableCell>{expense.categoryName}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">
@@ -88,18 +127,10 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
                 <TableCell className="text-right font-medium">{expense.amountFormatted}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setEditTarget(expense)}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => onClickEdit(expense)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteTarget(expense.id)}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => onClickDelete(expense)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -110,7 +141,36 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
         </Table>
       </div>
 
-      {/* Delete confirmation */}
+      {/* Scope dialog for recurring expenses */}
+      {scopeIntent && (
+        <RecurringScopeDialog
+          mode={scopeIntent.mode}
+          open={!!scopeIntent}
+          onCancel={() => setScopeIntent(null)}
+          onSingle={() => {
+            const { mode, expense } = scopeIntent
+            setScopeIntent(null)
+            if (mode === 'delete') {
+              setDeleteTarget(expense.id)
+            } else {
+              setEditTarget(expense)
+              setEditScope('single')
+            }
+          }}
+          onFuture={() => {
+            const { mode, expense } = scopeIntent
+            setScopeIntent(null)
+            if (mode === 'delete') {
+              handleDeleteFuture(expense)
+            } else {
+              setEditTarget(expense)
+              setEditScope('future')
+            }
+          }}
+        />
+      )}
+
+      {/* Simple delete confirmation (non-recurring or single) */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
@@ -121,7 +181,7 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
             <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+            <Button variant="destructive" onClick={handleDeleteConfirmed} disabled={deleting}>
               {deleting ? 'Excluindo...' : 'Excluir'}
             </Button>
           </DialogFooter>
@@ -134,7 +194,8 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
           expense={editTarget}
           categories={categories}
           householdId={householdId}
-          onClose={() => setEditTarget(null)}
+          scope={editScope}
+          onClose={() => { setEditTarget(null); setEditScope(null) }}
         />
       )}
     </>

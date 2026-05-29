@@ -16,6 +16,7 @@ export type PersonalExpenseDto = {
   categoryId: string
   categoryName: string
   budgetBucket: 'needs' | 'wants' | 'savings'
+  recurringPersonalExpenseId: string | null
 }
 
 export type InvestmentDto = {
@@ -31,6 +32,15 @@ export type CategoryDto = {
   id: string
   name: string
   budgetBucket: 'needs' | 'wants' | 'savings'
+}
+
+export type RecurringPersonalExpenseDto = {
+  id: string
+  description: string
+  amountCents: number
+  amountFormatted: string
+  categoryId: string
+  categoryName: string
 }
 
 export type BudgetSummaryDto = {
