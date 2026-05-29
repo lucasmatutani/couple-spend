@@ -1,13 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, RefreshCw } from 'lucide-react'
+import { Pencil, Plus, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import RecurringScopeDialog from '@/components/RecurringScopeDialog'
 import { deleteIncome, deleteIncomeFuture } from '../actions'
 import AddIncomeSheet from './AddIncomeSheet'
+import EditIncomeSheet from './EditIncomeSheet'
 import type { IncomeDto } from '../types'
 
 type Props = {
@@ -17,31 +18,50 @@ type Props = {
 
 export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) {
   const [deleting, setDeleting] = useState<string | null>(null)
-  const [scopeTarget, setScopeTarget] = useState<IncomeDto | null>(null)
 
-  async function handleDelete(income: IncomeDto) {
+  // Edit flow
+  const [editTarget, setEditTarget] = useState<IncomeDto | null>(null)
+  const [editScope, setEditScope] = useState<'single' | 'future' | null>(null)
+
+  // Scope dialog (shared for edit and delete)
+  const [scopeDialog, setScopeDialog] = useState<{ mode: 'edit' | 'delete'; income: IncomeDto } | null>(null)
+
+  // ── Delete ────────────────────────────────────────────────────────────────
+
+  async function onClickDelete(income: IncomeDto) {
     if (income.recurringIncomeId) {
-      setScopeTarget(income)
-      return
+      setScopeDialog({ mode: 'delete', income })
+    } else {
+      setDeleting(income.id)
+      await deleteIncome(income.id)
+      setDeleting(null)
     }
-    setDeleting(income.id)
-    await deleteIncome(income.id)
-    setDeleting(null)
   }
 
   async function handleDeleteSingle(income: IncomeDto) {
-    setScopeTarget(null)
+    setScopeDialog(null)
     setDeleting(income.id)
     await deleteIncome(income.id)
     setDeleting(null)
   }
 
   async function handleDeleteFuture(income: IncomeDto) {
-    setScopeTarget(null)
+    setScopeDialog(null)
     if (!income.recurringIncomeId) return
     setDeleting(income.id)
     await deleteIncomeFuture(income.recurringIncomeId, income.occurredAt)
     setDeleting(null)
+  }
+
+  // ── Edit ──────────────────────────────────────────────────────────────────
+
+  function onClickEdit(income: IncomeDto) {
+    if (income.recurringIncomeId) {
+      setScopeDialog({ mode: 'edit', income })
+    } else {
+      setEditTarget(income)
+      setEditScope(null)
+    }
   }
 
   return (
@@ -74,14 +94,22 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0 ml-2">
-                  <span className="font-medium text-green-600">{income.amountFormatted}</span>
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  <span className="font-medium text-green-600 mr-1">{income.amountFormatted}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    onClick={() => onClickEdit(income)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
                   <Button
                     size="icon"
                     variant="ghost"
                     className="h-6 w-6 text-muted-foreground hover:text-destructive"
                     disabled={deleting === income.id}
-                    onClick={() => handleDelete(income)}
+                    onClick={() => onClickDelete(income)}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -92,13 +120,41 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
         )}
       </CardContent>
 
-      {scopeTarget && (
+      {/* Scope dialog for recurring incomes */}
+      {scopeDialog && (
         <RecurringScopeDialog
-          mode="delete"
-          open={!!scopeTarget}
-          onCancel={() => setScopeTarget(null)}
-          onSingle={() => handleDeleteSingle(scopeTarget)}
-          onFuture={() => handleDeleteFuture(scopeTarget)}
+          mode={scopeDialog.mode}
+          open={!!scopeDialog}
+          onCancel={() => setScopeDialog(null)}
+          onSingle={() => {
+            const { mode, income } = scopeDialog
+            setScopeDialog(null)
+            if (mode === 'delete') {
+              handleDeleteSingle(income)
+            } else {
+              setEditTarget(income)
+              setEditScope('single')
+            }
+          }}
+          onFuture={() => {
+            const { mode, income } = scopeDialog
+            setScopeDialog(null)
+            if (mode === 'delete') {
+              handleDeleteFuture(income)
+            } else {
+              setEditTarget(income)
+              setEditScope('future')
+            }
+          }}
+        />
+      )}
+
+      {/* Edit sheet */}
+      {editTarget && (
+        <EditIncomeSheet
+          income={editTarget}
+          scope={editScope}
+          onClose={() => { setEditTarget(null); setEditScope(null) }}
         />
       )}
     </Card>

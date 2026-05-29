@@ -161,6 +161,7 @@ export default async function IndividualPage({
     amountFormatted: `R$ ${(r.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
     categoryId: r.category_id,
     categoryName: categoryMap.get(r.category_id)?.name ?? 'Sem categoria',
+    installmentCount: r.installment_count,
   }))
 
   const recurringTotalCents = peRows

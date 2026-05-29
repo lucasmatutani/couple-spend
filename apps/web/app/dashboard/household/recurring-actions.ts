@@ -23,6 +23,7 @@ const addSchema = z.object({
   description: z.string().min(1),
   splitRuleType: z.enum(['EQUAL', 'ONLY_PAYER', 'ONLY_OTHER', 'CUSTOM']),
   splitRulePayerPercent: z.number().min(0).max(100).nullable(),
+  installmentCount: z.number().int().min(1).nullable(),
 })
 
 function buildSplitRule(type: string, payerPercent: number | null): SplitRule {
@@ -34,14 +35,22 @@ function buildSplitRule(type: string, payerPercent: number | null): SplitRule {
   }
 }
 
-// Returns all months from the given month through December of the current year.
-function monthsUntilYearEnd(): { year: number; month: number }[] {
+// Returns the months to generate entries for.
+// installmentCount=null → current month through December of current year
+// installmentCount=n    → exactly n months starting from current month
+function monthsToGenerate(installmentCount: number | null): { year: number; month: number }[] {
   const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() // 0-indexed
   const result = []
-  for (let m = currentMonth; m <= 11; m++) {
-    result.push({ year: currentYear, month: m + 1 }) // 1-indexed
+  if (installmentCount !== null) {
+    for (let i = 0; i < installmentCount; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      result.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
+    }
+  } else {
+    const currentYear = now.getFullYear()
+    for (let m = now.getMonth(); m <= 11; m++) {
+      result.push({ year: currentYear, month: m + 1 })
+    }
   }
   return result
 }
@@ -67,17 +76,18 @@ export async function addRecurringExpense(input: unknown): Promise<ActionResult>
       description: d.description,
       split_rule_type: d.splitRuleType,
       split_rule_payer_percent: d.splitRulePayerPercent ?? null,
+      installment_count: d.installmentCount ?? null,
     })
     .select('id')
     .single()
 
   if (tmplErr || !template) return { success: false, error: 'Erro ao criar despesa fixa' }
 
-  // 2. Auto-generate one expense entry per month until end of current year
+  // 2. Auto-generate one expense entry per month
   const splitRule = buildSplitRule(d.splitRuleType, d.splitRulePayerPercent)
   const repo = new SupabaseExpenseRepository()
 
-  for (const { year, month } of monthsUntilYearEnd()) {
+  for (const { year, month } of monthsToGenerate(d.installmentCount ?? null)) {
     const mm = String(month).padStart(2, '0')
     const occurredAt = new Date(`${year}-${mm}-01T12:00:00`)
     const expense = Expense.create({
@@ -103,6 +113,47 @@ export async function addRecurringExpense(input: unknown): Promise<ActionResult>
       .eq('source_id', 'recurring')
       .eq('external_id', `${template.id}-${year}-${mm}`)
   }
+
+  revalidatePath('/dashboard/household')
+  return { success: true }
+}
+
+// Updates a recurring expense template and all future generated entries from the current month.
+export async function updateRecurringExpenseTemplate(input: unknown): Promise<ActionResult> {
+  const schema = z.object({
+    id: z.string().min(1),
+    categoryId: z.string().min(1),
+    amountCents: z.number().int().positive(),
+    description: z.string().min(1),
+    splitRuleType: z.enum(['EQUAL', 'ONLY_PAYER', 'ONLY_OTHER', 'CUSTOM']),
+    splitRulePayerPercent: z.number().min(0).max(100).nullable(),
+  })
+
+  const parsed = schema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const d = parsed.data
+  const fromDate = `${new Date().toISOString().slice(0, 7)}-01` // YYYY-MM-01
+
+  await supabase.from('recurring_expenses').update({
+    category_id: d.categoryId,
+    amount_cents: d.amountCents,
+    description: d.description,
+    split_rule_type: d.splitRuleType,
+    split_rule_payer_percent: d.splitRulePayerPercent ?? null,
+  }).eq('id', d.id)
+
+  await supabase.from('expenses').update({
+    category_id: d.categoryId,
+    amount_cents: d.amountCents,
+    description: d.description,
+    split_rule_type: d.splitRuleType,
+    split_rule_payer_percent: d.splitRulePayerPercent ?? null,
+  }).eq('recurring_expense_id', d.id).gte('occurred_at', fromDate)
 
   revalidatePath('/dashboard/household')
   return { success: true }

@@ -403,6 +403,7 @@ export type Database = {
           description: string
           split_rule_type: SplitRuleType
           split_rule_payer_percent: number | null
+          installment_count: number | null
           active: boolean
           created_at: string
         }
@@ -415,6 +416,7 @@ export type Database = {
           description: string
           split_rule_type: SplitRuleType
           split_rule_payer_percent?: number | null
+          installment_count?: number | null
           active?: boolean
           created_at?: string
         }
@@ -427,6 +429,7 @@ export type Database = {
           description?: string
           split_rule_type?: SplitRuleType
           split_rule_payer_percent?: number | null
+          installment_count?: number | null
           active?: boolean
           created_at?: string
         }
@@ -439,6 +442,7 @@ export type Database = {
           category_id: string
           amount_cents: number
           description: string
+          installment_count: number | null
           active: boolean
           created_at: string
         }
@@ -448,6 +452,7 @@ export type Database = {
           category_id: string
           amount_cents: number
           description: string
+          installment_count?: number | null
           active?: boolean
           created_at?: string
         }
@@ -457,6 +462,7 @@ export type Database = {
           category_id?: string
           amount_cents?: number
           description?: string
+          installment_count?: number | null
           active?: boolean
           created_at?: string
         }

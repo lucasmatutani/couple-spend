@@ -47,4 +47,5 @@ export type RecurringExpenseDto = {
   categoryName: string
   splitRuleType: string
   splitRulePayerPercent: number | null
+  installmentCount: number | null
 }

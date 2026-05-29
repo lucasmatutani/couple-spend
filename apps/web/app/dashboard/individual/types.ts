@@ -42,6 +42,7 @@ export type RecurringPersonalExpenseDto = {
   amountFormatted: string
   categoryId: string
   categoryName: string
+  installmentCount: number | null
 }
 
 export type BudgetSummaryDto = {

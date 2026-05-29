@@ -99,6 +99,59 @@ export async function deleteIncome(id: string): Promise<ActionResult> {
   return { success: true }
 }
 
+export async function updateIncomeSingle(input: unknown): Promise<ActionResult> {
+  const schema = z.object({
+    id: z.string().min(1),
+    source: z.string().min(1).max(120),
+    amountCents: z.number().int().positive(),
+  })
+  const parsed = schema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const { error } = await supabase
+    .from('incomes')
+    .update({ source: parsed.data.source, amount_cents: parsed.data.amountCents })
+    .eq('id', parsed.data.id)
+  if (error) return { success: false, error: 'Erro ao atualizar receita' }
+
+  revalidatePath('/dashboard/individual')
+  return { success: true }
+}
+
+export async function updateIncomeFuture(input: unknown): Promise<ActionResult> {
+  const schema = z.object({
+    recurringIncomeId: z.string().min(1),
+    fromOccurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    source: z.string().min(1).max(120),
+    amountCents: z.number().int().positive(),
+  })
+  const parsed = schema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const d = parsed.data
+  await supabase
+    .from('incomes')
+    .update({ source: d.source, amount_cents: d.amountCents })
+    .eq('recurring_income_id', d.recurringIncomeId)
+    .gte('occurred_at', d.fromOccurredAt)
+
+  await supabase
+    .from('recurring_incomes')
+    .update({ source: d.source, amount_cents: d.amountCents })
+    .eq('id', d.recurringIncomeId)
+
+  revalidatePath('/dashboard/individual')
+  return { success: true }
+}
+
 export async function deleteIncomeFuture(
   recurringIncomeId: string,
   fromOccurredAt: string, // "YYYY-MM-DD"

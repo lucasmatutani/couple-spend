@@ -115,6 +115,7 @@ export default async function HouseholdPage({
     categoryName: categoryMap.get(r.category_id) ?? 'Sem categoria',
     splitRuleType: r.split_rule_type,
     splitRulePayerPercent: r.split_rule_payer_percent,
+    installmentCount: r.installment_count,
   }))
 
   const recurringTotalCents = rows

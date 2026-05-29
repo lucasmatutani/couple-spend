@@ -12,15 +12,22 @@ const addSchema = z.object({
   categoryId: z.string().min(1),
   amountCents: z.number().int().positive(),
   description: z.string().min(1),
+  installmentCount: z.number().int().min(1).nullable(),
 })
 
-function monthsUntilYearEnd(): { year: number; month: number }[] {
+function monthsToGenerate(installmentCount: number | null): { year: number; month: number }[] {
   const now = new Date()
-  const currentYear = now.getFullYear()
-  const currentMonth = now.getMonth() // 0-indexed
   const result = []
-  for (let m = currentMonth; m <= 11; m++) {
-    result.push({ year: currentYear, month: m + 1 })
+  if (installmentCount !== null) {
+    for (let i = 0; i < installmentCount; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      result.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
+    }
+  } else {
+    const currentYear = now.getFullYear()
+    for (let m = now.getMonth(); m <= 11; m++) {
+      result.push({ year: currentYear, month: m + 1 })
+    }
   }
   return result
 }
@@ -43,16 +50,17 @@ export async function addRecurringPersonalExpense(input: unknown): Promise<Actio
       category_id: d.categoryId,
       amount_cents: d.amountCents,
       description: d.description,
+      installment_count: d.installmentCount ?? null,
     })
     .select('id')
     .single()
 
   if (tmplErr || !template) return { success: false, error: 'Erro ao criar despesa fixa' }
 
-  // 2. Auto-generate one entry per month until end of current year
+  // 2. Auto-generate one entry per month
   const repo = getPersonalExpenseRepository()
 
-  for (const { year, month } of monthsUntilYearEnd()) {
+  for (const { year, month } of monthsToGenerate(d.installmentCount ?? null)) {
     const mm = String(month).padStart(2, '0')
     const occurredAt = new Date(`${year}-${mm}-01T12:00:00`)
     const expense = PersonalExpense.create({
@@ -74,6 +82,40 @@ export async function addRecurringPersonalExpense(input: unknown): Promise<Actio
       .eq('source_id', 'recurring')
       .eq('external_id', `${template.id}-${year}-${mm}`)
   }
+
+  revalidatePath('/dashboard/individual')
+  return { success: true }
+}
+
+export async function updateRecurringPersonalExpenseTemplate(input: unknown): Promise<ActionResult> {
+  const schema = z.object({
+    id: z.string().min(1),
+    categoryId: z.string().min(1),
+    amountCents: z.number().int().positive(),
+    description: z.string().min(1),
+  })
+
+  const parsed = schema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const d = parsed.data
+  const fromDate = `${new Date().toISOString().slice(0, 7)}-01`
+
+  await supabase.from('recurring_personal_expenses').update({
+    category_id: d.categoryId,
+    amount_cents: d.amountCents,
+    description: d.description,
+  }).eq('id', d.id)
+
+  await supabase.from('personal_expenses').update({
+    category_id: d.categoryId,
+    amount_cents: d.amountCents,
+    description: d.description,
+  }).eq('recurring_personal_expense_id', d.id).gte('occurred_at', fromDate)
 
   revalidatePath('/dashboard/individual')
   return { success: true }
