@@ -54,12 +54,37 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
   const [rows, setRows] = useState<ReviewRow[]>([])
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null)
   const [planLimit, setPlanLimit] = useState(false)
+  const [pdfCostWarningPending, setPdfCostWarningPending] = useState(false)
+  const [isPdfImport, setIsPdfImport] = useState(false)
   const router = useRouter()
 
   function handleFileDrop(e: React.DragEvent) {
     e.preventDefault()
     const dropped = e.dataTransfer.files[0]
-    if (dropped) setFile(dropped)
+    if (dropped) {
+      setFile(dropped)
+      setPdfCostWarningPending(false)
+    }
+  }
+
+  function buildReviewRows(pv: ImportPreview): ReviewRow[] {
+    return pv.transactions.map((t, i) => ({
+      idx: i,
+      externalId: t.raw.externalId,
+      occurredAt: t.raw.occurredAt instanceof Date
+        ? t.raw.occurredAt.toISOString().split('T')[0]!
+        : String(t.raw.occurredAt).split('T')[0]!,
+      description: t.raw.description,
+      amountFormatted: formatCents(t.raw.amountCents),
+      amountCents: t.raw.amountCents,
+      categoryId: t.categoryId,
+      categoryConfidence: t.categoryConfidence,
+      categorySource: t.categorySource,
+      splitRule: t.splitRule,
+      excluded: false,
+      sourceId: t.sourceId,
+      installment: (t.raw.metadata?.installment as { current: number; total: number } | null | undefined) ?? null,
+    }))
   }
 
   async function handleProcess() {
@@ -83,26 +108,17 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
     const pv = result.preview
     setPreview(pv)
 
-    const reviewRows: ReviewRow[] = pv.transactions.map((t, i) => ({
-      idx: i,
-      externalId: t.raw.externalId,
-      occurredAt: t.raw.occurredAt instanceof Date
-        ? t.raw.occurredAt.toISOString().split('T')[0]!
-        : String(t.raw.occurredAt).split('T')[0]!,
-      description: t.raw.description,
-      amountFormatted: formatCents(t.raw.amountCents),
-      amountCents: t.raw.amountCents,
-      categoryId: t.categoryId,
-      categoryConfidence: t.categoryConfidence,
-      categorySource: t.categorySource,
-      splitRule: t.splitRule,
-      excluded: false,
-    }))
-
-    // Sort: low confidence first
+    const reviewRows = buildReviewRows(pv)
     reviewRows.sort((a, b) => a.categoryConfidence - b.categoryConfidence)
     setRows(reviewRows)
     setStep(3)
+  }
+
+  async function startProcess() {
+    setPlanLimit(false)
+    setIsPdfImport(file?.name.endsWith('.pdf') ?? false)
+    setStep(2)
+    await handleProcess()
   }
 
   async function handleConfirm() {
@@ -137,22 +153,7 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
     const pv = result.preview
     setPreview(pv)
 
-    const reviewRows: ReviewRow[] = pv.transactions.map((t, i) => ({
-      idx: i,
-      externalId: t.raw.externalId,
-      occurredAt: t.raw.occurredAt instanceof Date
-        ? t.raw.occurredAt.toISOString().split('T')[0]!
-        : String(t.raw.occurredAt).split('T')[0]!,
-      description: t.raw.description,
-      amountFormatted: formatCents(t.raw.amountCents),
-      amountCents: t.raw.amountCents,
-      categoryId: t.categoryId,
-      categoryConfidence: t.categoryConfidence,
-      categorySource: t.categorySource,
-      splitRule: t.splitRule,
-      excluded: false,
-    }))
-
+    const reviewRows = buildReviewRows(pv)
     reviewRows.sort((a, b) => a.categoryConfidence - b.categoryConfidence)
     setRows(reviewRows)
     setStep(3)
@@ -161,6 +162,8 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
   // Step 1 — Upload
   if (step === 1) {
     const isOfx = file?.name.endsWith('.ofx')
+    const isCsv = file?.name.endsWith('.csv')
+    const isPdf = file?.name.endsWith('.pdf')
     return (
       <div className="space-y-6 max-w-xl">
         <h2 className="text-2xl font-bold">Importar transações</h2>
@@ -200,18 +203,21 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
                   <p className="text-sm text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Arraste um arquivo .ofx ou .csv aqui, ou clique para selecionar</p>
+                <p className="text-sm text-muted-foreground">Arraste um arquivo .ofx, .csv ou .pdf aqui, ou clique para selecionar</p>
               )}
               <input
                 id="file-input"
                 type="file"
-                accept=".ofx,.csv"
+                accept=".ofx,.csv,.pdf"
                 className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null)
+                  setPdfCostWarningPending(false)
+                }}
               />
             </div>
 
-            {file && !isOfx && (
+            {file && isCsv && (
               <div className="space-y-2">
                 <p className="text-sm font-medium">Formato do CSV</p>
                 <Select value={mapping} onValueChange={setMapping}>
@@ -223,6 +229,33 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
                     <SelectItem value="picpay">PicPay</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {pdfCostWarningPending && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <p className="font-medium mb-2">⚠ A extração por IA custa ~$0,05–$0,15 por página. Continuar?</p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      setPdfCostWarningPending(false)
+                      await startProcess()
+                    }}
+                  >
+                    Continuar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setPdfCostWarningPending(false)
+                      setFile(null)
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -238,17 +271,21 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button
-              className="w-full"
-              disabled={!file || loading}
-              onClick={async () => {
-                setPlanLimit(false)
-                setStep(2)
-                await handleProcess()
-              }}
-            >
-              Processar arquivo
-            </Button>
+            {!pdfCostWarningPending && (
+              <Button
+                className="w-full"
+                disabled={!file || loading}
+                onClick={() => {
+                  if (isPdf) {
+                    setPdfCostWarningPending(true)
+                  } else {
+                    startProcess()
+                  }
+                }}
+              >
+                Processar arquivo
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -260,7 +297,11 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground">Processando arquivo...</p>
+        <p className="text-muted-foreground">
+          {isPdfImport
+            ? 'Lendo fatura com IA... Isso pode levar até 15 segundos.'
+            : 'Processando arquivo...'}
+        </p>
         {error && (
           <div className="space-y-2 text-center">
             <p className="text-destructive">{error}</p>
@@ -338,7 +379,14 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
                     />
                   </td>
                   <td className="p-2 text-muted-foreground">{row.occurredAt}</td>
-                  <td className="p-2 max-w-xs truncate" title={row.description}>{row.description}</td>
+                  <td className="p-2 max-w-xs truncate" title={row.description}>
+                    {row.description}
+                    {row.installment && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
+                        {row.installment.current}/{row.installment.total}
+                      </span>
+                    )}
+                  </td>
                   <td className={`p-2 text-right font-medium tabular-nums ${row.amountCents > 0 ? 'text-red-600' : 'text-green-600'}`}>
                     {row.amountFormatted}
                   </td>

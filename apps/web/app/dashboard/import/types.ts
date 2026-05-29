@@ -18,4 +18,6 @@ export type ReviewRow = {
   categorySource: 'rule' | 'memory' | 'llm' | 'default'
   splitRule: string
   excluded: boolean
+  sourceId: string
+  installment?: { current: number; total: number } | null
 }

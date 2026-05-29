@@ -36,6 +36,12 @@
       ],
       "@splitwise/categorization": [
         "../../packages/categorization/src/index.ts"
+      ],
+      "@splitwise/import-open-finance": [
+        "../../packages/import-open-finance/src/index.ts"
+      ],
+      "@splitwise/import-pdf": [
+        "../../packages/import-pdf/src/index.ts"
       ]
     },
     "noEmit": true,

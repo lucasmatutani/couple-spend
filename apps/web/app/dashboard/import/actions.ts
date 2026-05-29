@@ -1,8 +1,8 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { toHouseholdId, toUserId, YearMonth } from '@splitwise/domain'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import { getImportUseCase, getImportRepository } from '@/lib/container'
@@ -10,8 +10,20 @@ import { checkCanImportMonth, PlanLimitError } from '@/lib/plan-guard'
 import { OfxFileAdapter } from '@splitwise/import-ofx'
 import { CsvFileAdapter, ITAU_MAPPING, PICPAY_MAPPING } from '@splitwise/import-csv'
 import type { CsvColumnMapping } from '@splitwise/import-csv'
-import { getOpenFinanceSource } from '@/lib/import-sources'
+import { PdfExtractionError } from '@splitwise/import-pdf'
+import { getOpenFinanceSource, getPdfSource } from '@/lib/import-sources'
 import type { ImportPreview, ReviewRow } from './types'
+
+async function getDefaultCategoryId(supabase: SupabaseClient): Promise<string> {
+  const { data } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('name', 'Other')
+    .is('household_id', null)
+    .single()
+  if (!data?.id) throw new Error('Default category "Other" not found in database.')
+  return data.id as string
+}
 
 type ProcessResult =
   | { success: true; preview: ImportPreview }
@@ -31,11 +43,6 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   const householdId = household.id as string
   const ownerId = user.id
 
-  // Plan guard: dry-run uses effectiveRange from the file to determine how far back we're importing.
-  // We check after parsing, so we parse first (light) then enforce. For file imports the
-  // requestedMonth is derived from the earliest transaction date after parsing. To keep it simple
-  // we enforce with the CURRENT month here (actual enforcement of historical range happens
-  // post-parse — see the summary.warnings array from the use case).
   try {
     await checkCanImportMonth(toUserId(user.id), YearMonth.current())
   } catch (err) {
@@ -48,14 +55,15 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   const buffer = Buffer.from(await file.arrayBuffer())
   const ext = file.name.split('.').pop()?.toLowerCase()
 
-  // Dry-run repository: never returns duplicates, never persists
+  const defaultCategoryId = await getDefaultCategoryId(supabase)
+
   const dryRunRepo = {
     existsByExternalId: async () => false,
     saveBatch: async () => {},
   }
 
   const defaultResolver = {
-    resolve: async () => ({ categoryId: 'other', confidence: 0.1, source: 'default' as const }),
+    resolve: async () => ({ categoryId: defaultCategoryId, confidence: 0.1, source: 'default' as const }),
   }
   const defaultPolicy = { apply: () => 'EQUAL' as const }
   const systemClock = { now: () => new Date() }
@@ -69,9 +77,12 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
     mapping === 'itau' ? ITAU_MAPPING :
     ITAU_MAPPING
 
-  const source = ext === 'ofx'
-    ? new OfxFileAdapter(buffer)
-    : new CsvFileAdapter(buffer, columnMapping, 'Importado')
+  const source =
+    ext === 'pdf'
+      ? getPdfSource(buffer)
+      : ext === 'ofx'
+        ? new OfxFileAdapter(buffer)
+        : new CsvFileAdapter(buffer, columnMapping, 'Importado')
 
   try {
     const summary = await useCase.execute(source, {}, ownerId, householdId)
@@ -82,6 +93,9 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
     }
     return { success: true, preview }
   } catch (e) {
+    if (e instanceof PdfExtractionError) {
+      return { success: false, error: e.message }
+    }
     return { success: false, error: e instanceof Error ? e.message : 'Erro ao processar arquivo' }
   }
 }
@@ -100,13 +114,13 @@ export async function confirmImport(rows: ReviewRow[], householdId: string): Pro
 
   const toSave = []
   for (const row of included) {
-    const isDuplicate = await repo.existsByExternalId(row.externalId, 'ofx-file', householdId)
+    const isDuplicate = await repo.existsByExternalId(row.externalId, row.sourceId, householdId)
     if (isDuplicate) { skipped++; continue }
 
     toSave.push({
       ownerId: user.id,
       householdId,
-      sourceId: 'ofx-file',
+      sourceId: row.sourceId,
       raw: {
         externalId: row.externalId,
         occurredAt: new Date(row.occurredAt),
@@ -159,12 +173,14 @@ export async function importFromConnectedAccount(accountId: string): Promise<Pro
   const householdId = household.id as string
   const ownerId = user.id
 
+  const defaultCategoryId = await getDefaultCategoryId(supabase)
+
   const dryRunRepo = {
     existsByExternalId: async () => false,
     saveBatch: async () => {},
   }
   const defaultResolver = {
-    resolve: async () => ({ categoryId: 'other', confidence: 0.1, source: 'default' as const }),
+    resolve: async () => ({ categoryId: defaultCategoryId, confidence: 0.1, source: 'default' as const }),
   }
   const defaultPolicy = { apply: () => 'EQUAL' as const }
   const systemClock = { now: () => new Date() }

@@ -49,6 +49,7 @@ describe('Architecture', () => {
       'import-ofx',
       'import-csv',
       'import-open-finance',
+      'import-pdf',
       'ofx-js',
       'papaparse',
       'xlsx',
@@ -80,6 +81,14 @@ describe('Architecture', () => {
   it('import-ofx does not import domain directly', () => {
     // import-ofx may only use @splitwise/import-core; @splitwise/domain is forbidden
     const found = violations('packages/import-ofx/src', [
+      '@splitwise/domain',
+      'packages/domain/src',
+    ])
+    expect(found).toEqual([])
+  })
+
+  it('import-pdf does not import domain directly', () => {
+    const found = violations('packages/import-pdf/src', [
       '@splitwise/domain',
       'packages/domain/src',
     ])
