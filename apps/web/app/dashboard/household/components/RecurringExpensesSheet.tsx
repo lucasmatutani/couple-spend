@@ -20,10 +20,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import RecurringScopeDialog from '@/components/RecurringScopeDialog'
 import {
   addRecurringExpense,
   deactivateRecurringTemplate,
   updateRecurringExpenseTemplate,
+  updateRecurringExpenseSingleMonth,
 } from '../recurring-actions'
 import type { CategoryDto, RecurringExpenseDto } from '../types'
 
@@ -85,6 +87,7 @@ export default function RecurringExpensesSheet({
   const [open, setOpen] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editScope, setEditScope] = useState<'single' | 'future' | null>(null)
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [formLoading, setFormLoading] = useState(false)
   const [formError, setFormError] = useState('')
@@ -94,7 +97,9 @@ export default function RecurringExpensesSheet({
   const visibleItems = recurringExpenses.filter((i) => !deletedIds.has(i.id))
 
   function startEdit(item: RecurringExpenseDto) {
+    // Show scope dialog first; the inline form only opens after scope is chosen
     setEditingId(item.id)
+    setEditScope(null)
     setEditForm(fromItem(item))
     setFormError('')
     setShowAddForm(false)
@@ -102,6 +107,7 @@ export default function RecurringExpensesSheet({
 
   function cancelEdit() {
     setEditingId(null)
+    setEditScope(null)
     setFormError('')
   }
 
@@ -147,23 +153,29 @@ export default function RecurringExpensesSheet({
 
   async function handleEditSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!editingId) return
+    if (!editingId || !editScope) return
     setFormError('')
     const f = editForm
     if (!f.description.trim()) { setFormError('Descrição obrigatória'); return }
     if (!f.amountBrl) { setFormError('Valor obrigatório'); return }
     setFormLoading(true)
-    const result = await updateRecurringExpenseTemplate({
-      id: editingId,
+
+    const payload = {
       categoryId: f.categoryId,
       amountCents: parseBrl(f.amountBrl),
       description: f.description.trim(),
       splitRuleType: f.splitType as 'EQUAL' | 'ONLY_PAYER' | 'ONLY_OTHER' | 'CUSTOM',
       splitRulePayerPercent: f.splitType === 'CUSTOM' ? parseFloat(f.payerPercent) : null,
-    })
+    }
+
+    const result = editScope === 'single'
+      ? await updateRecurringExpenseSingleMonth({ templateId: editingId, month: currentMonth, ...payload })
+      : await updateRecurringExpenseTemplate({ id: editingId, ...payload })
+
     setFormLoading(false)
     if (result.success) {
       setEditingId(null)
+      setEditScope(null)
       router.refresh()
     } else {
       setFormError(result.error)
@@ -245,7 +257,19 @@ export default function RecurringExpensesSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setShowAddForm(false); setEditingId(null); setFormError('') } }}>
+    <>
+    {/* Scope dialog — shown when an item is selected for edit but scope not yet chosen */}
+    {editingId && editScope === null && (
+      <RecurringScopeDialog
+        mode="edit"
+        open
+        onCancel={cancelEdit}
+        onSingle={() => setEditScope('single')}
+        onFuture={() => setEditScope('future')}
+      />
+    )}
+
+    <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setShowAddForm(false); setEditingId(null); setEditScope(null); setFormError('') } }}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Repeat className="h-4 w-4" />
@@ -266,9 +290,14 @@ export default function RecurringExpensesSheet({
           )}
 
           {visibleItems.map((item) =>
-            editingId === item.id ? (
+            editingId === item.id && editScope !== null ? (
               <form key={item.id} onSubmit={handleEditSave} className="space-y-4 rounded-lg border p-4 bg-accent/30">
-                <p className="text-sm font-semibold">Editar despesa fixa</p>
+                <div>
+                  <p className="text-sm font-semibold">Editar despesa fixa</p>
+                  <p className="text-xs text-muted-foreground">
+                    {editScope === 'single' ? `Somente ${currentMonth}` : 'Este e todos os próximos meses'}
+                  </p>
+                </div>
                 {renderFormFields(editForm, setEdit, 'edit', false)}
                 {formError && <p className="text-xs text-destructive">{formError}</p>}
                 <div className="flex gap-2">
@@ -322,5 +351,6 @@ export default function RecurringExpensesSheet({
         </div>
       </SheetContent>
     </Sheet>
+    </>
   )
 }

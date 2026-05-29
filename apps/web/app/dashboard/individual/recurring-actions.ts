@@ -121,6 +121,41 @@ export async function updateRecurringPersonalExpenseTemplate(input: unknown): Pr
   return { success: true }
 }
 
+export async function updateRecurringPersonalExpenseSingleMonth(input: unknown): Promise<ActionResult> {
+  const schema = z.object({
+    templateId: z.string().min(1),
+    month: z.string().regex(/^\d{4}-\d{2}$/),
+    categoryId: z.string().min(1),
+    amountCents: z.number().int().positive(),
+    description: z.string().min(1),
+  })
+
+  const parsed = schema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const d = parsed.data
+
+  const { error } = await supabase
+    .from('personal_expenses')
+    .update({
+      category_id: d.categoryId,
+      amount_cents: d.amountCents,
+      description: d.description,
+      recurring_personal_expense_id: null,
+    })
+    .eq('recurring_personal_expense_id', d.templateId)
+    .eq('occurred_at', `${d.month}-01`)
+
+  if (error) return { success: false, error: 'Erro ao atualizar a despesa' }
+
+  revalidatePath('/dashboard/individual')
+  return { success: true }
+}
+
 export async function deactivateRecurringPersonalTemplate(
   templateId: string,
   fromMonth: string, // "YYYY-MM"

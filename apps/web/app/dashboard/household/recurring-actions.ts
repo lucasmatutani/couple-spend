@@ -139,13 +139,15 @@ export async function updateRecurringExpenseTemplate(input: unknown): Promise<Ac
   const d = parsed.data
   const fromDate = `${new Date().toISOString().slice(0, 7)}-01` // YYYY-MM-01
 
-  await supabase.from('recurring_expenses').update({
+  const { error: tmplErr } = await supabase.from('recurring_expenses').update({
     category_id: d.categoryId,
     amount_cents: d.amountCents,
     description: d.description,
     split_rule_type: d.splitRuleType,
     split_rule_payer_percent: d.splitRulePayerPercent ?? null,
   }).eq('id', d.id)
+
+  if (tmplErr) return { success: false, error: 'Erro ao atualizar o template' }
 
   await supabase.from('expenses').update({
     category_id: d.categoryId,
@@ -154,6 +156,47 @@ export async function updateRecurringExpenseTemplate(input: unknown): Promise<Ac
     split_rule_type: d.splitRuleType,
     split_rule_payer_percent: d.splitRulePayerPercent ?? null,
   }).eq('recurring_expense_id', d.id).gte('occurred_at', fromDate)
+
+  revalidatePath('/dashboard/household')
+  return { success: true }
+}
+
+// Updates only the generated entry for a specific month, decoupling it from the series.
+export async function updateRecurringExpenseSingleMonth(input: unknown): Promise<ActionResult> {
+  const schema = z.object({
+    templateId: z.string().min(1),
+    month: z.string().regex(/^\d{4}-\d{2}$/),
+    categoryId: z.string().min(1),
+    amountCents: z.number().int().positive(),
+    description: z.string().min(1),
+    splitRuleType: z.enum(['EQUAL', 'ONLY_PAYER', 'ONLY_OTHER', 'CUSTOM']),
+    splitRulePayerPercent: z.number().min(0).max(100).nullable(),
+  })
+
+  const parsed = schema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const d = parsed.data
+  const occurredAt = `${d.month}-01`
+
+  const { error } = await supabase
+    .from('expenses')
+    .update({
+      category_id: d.categoryId,
+      amount_cents: d.amountCents,
+      description: d.description,
+      split_rule_type: d.splitRuleType,
+      split_rule_payer_percent: d.splitRulePayerPercent ?? null,
+      recurring_expense_id: null,
+    })
+    .eq('recurring_expense_id', d.templateId)
+    .eq('occurred_at', occurredAt)
+
+  if (error) return { success: false, error: 'Erro ao atualizar a despesa' }
 
   revalidatePath('/dashboard/household')
   return { success: true }
@@ -180,10 +223,12 @@ export async function deactivateRecurringTemplate(
     .eq('recurring_expense_id', templateId)
     .gte('occurred_at', fromDate)
 
-  await supabase
+  const { error: deactivateErr } = await supabase
     .from('recurring_expenses')
     .update({ active: false })
     .eq('id', templateId)
+
+  if (deactivateErr) return { success: false, error: 'Erro ao desativar o template' }
 
   revalidatePath('/dashboard/household')
   return { success: true }

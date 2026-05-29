@@ -20,10 +20,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import RecurringScopeDialog from '@/components/RecurringScopeDialog'
 import {
   addRecurringPersonalExpense,
   deactivateRecurringPersonalTemplate,
   updateRecurringPersonalExpenseTemplate,
+  updateRecurringPersonalExpenseSingleMonth,
 } from '../recurring-actions'
 import type { CategoryDto, RecurringPersonalExpenseDto } from '../types'
 
@@ -65,6 +67,7 @@ export default function RecurringPersonalExpensesSheet({
   const [open, setOpen] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editScope, setEditScope] = useState<'single' | 'future' | null>(null)
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [formLoading, setFormLoading] = useState(false)
   const [formError, setFormError] = useState('')
@@ -75,6 +78,7 @@ export default function RecurringPersonalExpensesSheet({
 
   function startEdit(item: RecurringPersonalExpenseDto) {
     setEditingId(item.id)
+    setEditScope(null)
     setEditForm(fromItem(item))
     setFormError('')
     setShowAddForm(false)
@@ -119,21 +123,27 @@ export default function RecurringPersonalExpensesSheet({
 
   async function handleEditSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!editingId) return
+    if (!editingId || !editScope) return
     setFormError('')
     const f = editForm
     if (!f.description.trim()) { setFormError('Descrição obrigatória'); return }
     if (!f.amountBrl) { setFormError('Valor obrigatório'); return }
     setFormLoading(true)
-    const result = await updateRecurringPersonalExpenseTemplate({
-      id: editingId,
+
+    const payload = {
       categoryId: f.categoryId,
       amountCents: parseBrl(f.amountBrl),
       description: f.description.trim(),
-    })
+    }
+
+    const result = editScope === 'single'
+      ? await updateRecurringPersonalExpenseSingleMonth({ templateId: editingId, month: currentMonth, ...payload })
+      : await updateRecurringPersonalExpenseTemplate({ id: editingId, ...payload })
+
     setFormLoading(false)
     if (result.success) {
       setEditingId(null)
+      setEditScope(null)
       router.refresh()
     } else {
       setFormError(result.error)
@@ -148,7 +158,18 @@ export default function RecurringPersonalExpensesSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setShowAddForm(false); setEditingId(null); setFormError('') } }}>
+    <>
+    {editingId && editScope === null && (
+      <RecurringScopeDialog
+        mode="edit"
+        open
+        onCancel={() => { setEditingId(null); setFormError('') }}
+        onSingle={() => setEditScope('single')}
+        onFuture={() => setEditScope('future')}
+      />
+    )}
+
+    <Sheet open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setShowAddForm(false); setEditingId(null); setEditScope(null); setFormError('') } }}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Repeat className="h-4 w-4" />
@@ -169,9 +190,14 @@ export default function RecurringPersonalExpensesSheet({
           )}
 
           {visibleItems.map((item) =>
-            editingId === item.id ? (
+            editingId === item.id && editScope !== null ? (
               <form key={item.id} onSubmit={handleEditSave} className="space-y-4 rounded-lg border p-4 bg-accent/30">
-                <p className="text-sm font-semibold">Editar despesa fixa</p>
+                <div>
+                  <p className="text-sm font-semibold">Editar despesa fixa</p>
+                  <p className="text-xs text-muted-foreground">
+                    {editScope === 'single' ? `Somente ${currentMonth}` : 'Este e todos os próximos meses'}
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-desc">Descrição</Label>
                   <Input id="edit-desc" value={editForm.description} onChange={(e) => setEdit('description', e.target.value)} />
@@ -273,5 +299,6 @@ export default function RecurringPersonalExpensesSheet({
         </div>
       </SheetContent>
     </Sheet>
+    </>
   )
 }
