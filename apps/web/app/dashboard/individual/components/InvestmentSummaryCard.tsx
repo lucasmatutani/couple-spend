@@ -35,17 +35,15 @@ export default function InvestmentSummaryCard({ investments, summary }: Props) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">Investimentos</CardTitle>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-blue-600">{summary.totalInvestedFormatted}</span>
-          <AddInvestmentSheet trigger={
-            <Button size="sm" variant="outline" className="gap-1 h-8">
-              <Plus className="h-3 w-3" />
-              Adicionar
-            </Button>
-          } />
-        </div>
+        <AddInvestmentSheet trigger={
+          <Button size="sm" variant="outline" className="gap-1 h-8">
+            <Plus className="h-3 w-3" />
+            Adicionar
+          </Button>
+        } />
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <p className="text-3xl font-bold text-blue-600">{summary.totalInvestedFormatted}</p>
         {investments.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum investimento registrado neste mês.</p>
         ) : (

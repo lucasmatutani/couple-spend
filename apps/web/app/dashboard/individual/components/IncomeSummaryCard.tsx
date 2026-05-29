@@ -48,19 +48,17 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">Receitas</CardTitle>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-green-600">
-            {`R$ ${(totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          </span>
-          <AddIncomeSheet trigger={
-            <Button size="sm" variant="outline" className="gap-1 h-8">
-              <Plus className="h-3 w-3" />
-              Adicionar
-            </Button>
-          } />
-        </div>
+        <AddIncomeSheet trigger={
+          <Button size="sm" variant="outline" className="gap-1 h-8">
+            <Plus className="h-3 w-3" />
+            Adicionar
+          </Button>
+        } />
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
+        <p className="text-3xl font-bold text-green-600">
+          {`R$ ${(totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+        </p>
         {incomes.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma receita registrada neste mês.</p>
         ) : (
