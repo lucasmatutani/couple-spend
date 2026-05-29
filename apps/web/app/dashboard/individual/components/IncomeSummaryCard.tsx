@@ -5,7 +5,8 @@ import { Plus, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { deleteIncome } from '../actions'
+import RecurringScopeDialog from '@/components/RecurringScopeDialog'
+import { deleteIncome, deleteIncomeFuture } from '../actions'
 import AddIncomeSheet from './AddIncomeSheet'
 import type { IncomeDto } from '../types'
 
@@ -16,17 +17,32 @@ type Props = {
 
 export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) {
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [scopeTarget, setScopeTarget] = useState<IncomeDto | null>(null)
 
-  async function handleDelete(id: string) {
-    setDeleting(id)
-    await deleteIncome(id)
+  async function handleDelete(income: IncomeDto) {
+    if (income.recurringIncomeId) {
+      setScopeTarget(income)
+      return
+    }
+    setDeleting(income.id)
+    await deleteIncome(income.id)
     setDeleting(null)
   }
 
-  const totalFormatted = incomes.length > 0
-    ? incomes[0]!.amountFormatted.replace(/\d[\d,.]*/, '') +
-      (totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : `R$ ${(totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  async function handleDeleteSingle(income: IncomeDto) {
+    setScopeTarget(null)
+    setDeleting(income.id)
+    await deleteIncome(income.id)
+    setDeleting(null)
+  }
+
+  async function handleDeleteFuture(income: IncomeDto) {
+    setScopeTarget(null)
+    if (!income.recurringIncomeId) return
+    setDeleting(income.id)
+    await deleteIncomeFuture(income.recurringIncomeId, income.occurredAt)
+    setDeleting(null)
+  }
 
   return (
     <Card>
@@ -34,9 +50,7 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
         <CardTitle className="text-base">Receitas</CardTitle>
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-green-600">
-            {incomes.length === 0
-              ? 'R$ 0,00'
-              : `R$ ${(totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            {`R$ ${(totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           </span>
           <AddIncomeSheet trigger={
             <Button size="sm" variant="outline" className="gap-1 h-8">
@@ -55,7 +69,7 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
               <li key={income.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="truncate">{income.source}</span>
-                  {income.recurring && (
+                  {income.recurringIncomeId && (
                     <Badge variant="secondary" className="shrink-0 gap-1 text-xs">
                       <RefreshCw className="h-2.5 w-2.5" />
                       Recorrente
@@ -69,7 +83,7 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
                     variant="ghost"
                     className="h-6 w-6 text-muted-foreground hover:text-destructive"
                     disabled={deleting === income.id}
-                    onClick={() => handleDelete(income.id)}
+                    onClick={() => handleDelete(income)}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -79,6 +93,16 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
           </ul>
         )}
       </CardContent>
+
+      {scopeTarget && (
+        <RecurringScopeDialog
+          mode="delete"
+          open={!!scopeTarget}
+          onCancel={() => setScopeTarget(null)}
+          onSingle={() => handleDeleteSingle(scopeTarget)}
+          onFuture={() => handleDeleteFuture(scopeTarget)}
+        />
+      )}
     </Card>
   )
 }

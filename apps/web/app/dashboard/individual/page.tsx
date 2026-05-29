@@ -4,7 +4,6 @@ import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryR
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import {
   getIndividualBudgetUseCase,
-  getIncomeRepository,
   getInvestmentRepository,
   getGoalRepository,
   getEvaluateGoalsUseCase,
@@ -50,10 +49,16 @@ export default async function IndividualPage({
   const start = month.startDate().toISOString().split('T')[0]!
   const end = month.endDate().toISOString().split('T')[0]!
 
-  const [summary, rawIncomes, personalExpenseRows, rawInvestments, categories, allGoals, recurringTemplates] =
+  const [summary, incomeRows, personalExpenseRows, rawInvestments, categories, allGoals, recurringTemplates] =
     await Promise.all([
       getIndividualBudgetUseCase().execute(userId, month),
-      getIncomeRepository().findByOwnerAndMonth(userId, month),
+      // Direct query to include recurring_income_id
+      supabase
+        .from('incomes')
+        .select('id, occurred_at, amount_cents, source, recurring, recurring_income_id')
+        .eq('owner_id', user.id)
+        .gte('occurred_at', start)
+        .lte('occurred_at', end),
       // Direct query to include recurring_personal_expense_id
       supabase
         .from('personal_expenses')
@@ -108,13 +113,14 @@ export default async function IndividualPage({
     avgSurplus3mFormatted: Money.of(avgSurplus3mCents).format(),
   }
 
-  const incomeDtos: IncomeDto[] = rawIncomes.map((i) => ({
-    id: i.id,
-    occurredAt: i.occurredAt.toISOString().split('T')[0]!,
-    amountFormatted: i.amount.format(),
-    amountCents: i.amount.cents,
-    source: i.source,
-    recurring: i.recurring,
+  const incomeDtos: IncomeDto[] = (incomeRows.data ?? []).map((r) => ({
+    id: r.id,
+    occurredAt: r.occurred_at,
+    amountFormatted: `R$ ${(r.amount_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+    amountCents: r.amount_cents,
+    source: r.source,
+    recurring: r.recurring,
+    recurringIncomeId: r.recurring_income_id,
   }))
 
   const peRows = personalExpenseRows.data ?? []

@@ -216,6 +216,33 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_incomes: {
+        Row: {
+          id: string
+          owner_id: string
+          source: string
+          amount_cents: number
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          source: string
+          amount_cents: number
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          source?: string
+          amount_cents?: number
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
       incomes: {
         Row: {
           id: string
@@ -224,6 +251,7 @@ export type Database = {
           amount_cents: number
           source: string
           recurring: boolean
+          recurring_income_id: string | null
           created_at: string
         }
         Insert: {
@@ -233,6 +261,7 @@ export type Database = {
           amount_cents: number
           source: string
           recurring?: boolean
+          recurring_income_id?: string | null
           created_at?: string
         }
         Update: {
@@ -242,6 +271,7 @@ export type Database = {
           amount_cents?: number
           source?: string
           recurring?: boolean
+          recurring_income_id?: string | null
           created_at?: string
         }
         Relationships: []

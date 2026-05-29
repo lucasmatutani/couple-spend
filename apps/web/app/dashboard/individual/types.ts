@@ -5,6 +5,7 @@ export type IncomeDto = {
   amountCents: number
   source: string
   recurring: boolean
+  recurringIncomeId: string | null
 }
 
 export type PersonalExpenseDto = {
