@@ -18,6 +18,7 @@ export type PersonalExpenseDto = {
   categoryName: string
   budgetBucket: 'needs' | 'wants' | 'savings'
   recurringPersonalExpenseId: string | null
+  paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other' | null
 }
 
 export type InvestmentDto = {

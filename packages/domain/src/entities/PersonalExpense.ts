@@ -5,6 +5,8 @@ import {
   type UserId,
 } from '../kernel/ids.js'
 
+export type PaymentMethod = 'credit_card' | 'debit' | 'pix' | 'cash' | 'other'
+
 export class PersonalExpense {
   private constructor(
     readonly id: PersonalExpenseId,
@@ -16,6 +18,7 @@ export class PersonalExpense {
     readonly sourceId: string,
     readonly externalId: string,
     readonly importedAt: Date,
+    readonly paymentMethod: PaymentMethod | null,
   ) {}
 
   static create(data: {
@@ -28,6 +31,7 @@ export class PersonalExpense {
     sourceId: string
     externalId: string
     importedAt?: Date
+    paymentMethod?: PaymentMethod | null
   }): PersonalExpense {
     return new PersonalExpense(
       data.id,
@@ -39,6 +43,7 @@ export class PersonalExpense {
       data.sourceId,
       data.externalId,
       data.importedAt ?? new Date(),
+      data.paymentMethod ?? null,
     )
   }
 }

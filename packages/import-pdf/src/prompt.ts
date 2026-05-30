@@ -8,6 +8,8 @@ Rules:
 - "description": raw text exactly as shown. Do not normalize.
 - "installment": if description shows "3/12", return { current: 3, total: 12 }. Otherwise null.
 - "warnings": list any extraction issues (illegible text, ambiguous dates, etc).
+- Extract EVERY charge that appears in the statement, including fees and taxes such as "Repasse de IOF", "IOF", "Anuidade", "Taxa de câmbio" and similar. These are real expenses and must be included as separate transaction lines.
+- If an IOF or fee amount is shown as a summary line (e.g. "Repasse de IOF R$ 6,01") rather than tied to a specific date, use the statement closing date as "occurredAt".
 
 Output schema:
 {

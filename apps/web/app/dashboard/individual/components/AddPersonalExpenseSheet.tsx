@@ -22,11 +22,20 @@ import {
 import { addPersonalExpense } from '../actions'
 import type { CategoryDto } from '../types'
 
+const PAYMENT_METHODS = [
+  { value: 'credit_card', label: 'Cartão de crédito' },
+  { value: 'debit', label: 'Cartão de débito' },
+  { value: 'pix', label: 'Pix' },
+  { value: 'cash', label: 'Dinheiro' },
+  { value: 'other', label: 'Outro' },
+] as const
+
 const formSchema = z.object({
   categoryId: z.string().min(1, 'Categoria obrigatória'),
   amountBrl: z.string().regex(/^\d+([,\.]\d{1,2})?$/, 'Valor inválido'),
   occurredAt: z.string().min(1, 'Data obrigatória'),
   description: z.string(),
+  paymentMethod: z.string().nullable(),
 })
 
 function parseBrl(s: string): number {
@@ -51,6 +60,7 @@ export default function AddPersonalExpenseSheet({ categories, trigger }: Props) 
     amountBrl: '',
     occurredAt: todayIso(),
     description: '',
+    paymentMethod: 'credit_card' as string | null,
   })
 
   function set(field: keyof typeof form, value: string) {
@@ -76,11 +86,12 @@ export default function AddPersonalExpenseSheet({ categories, trigger }: Props) 
       occurredAt: parsed.data.occurredAt,
       amountCents: parseBrl(parsed.data.amountBrl),
       description: parsed.data.description || null,
+      paymentMethod: parsed.data.paymentMethod || null,
     })
     setLoading(false)
     if (result.success) {
       setOpen(false)
-      setForm({ categoryId: categories[0]?.id ?? '', amountBrl: '', occurredAt: todayIso(), description: '' })
+      setForm({ categoryId: categories[0]?.id ?? '', amountBrl: '', occurredAt: todayIso(), description: '', paymentMethod: 'credit_card' })
     }
   }
 
@@ -139,6 +150,25 @@ export default function AddPersonalExpenseSheet({ categories, trigger }: Props) 
               onChange={(e) => set('description', e.target.value)}
               placeholder="Ex: Farmácia"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Meio de pagamento</Label>
+            <Select
+              value={form.paymentMethod ?? ''}
+              onValueChange={(v) => set('paymentMethod', v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar..." />
+              </SelectTrigger>
+              <SelectContent>
+                {PAYMENT_METHODS.map((pm) => (
+                  <SelectItem key={pm.value} value={pm.value}>
+                    {pm.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>

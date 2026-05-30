@@ -5,6 +5,7 @@ import {
   toCategoryId,
   toPersonalExpenseId,
   toUserId,
+  type PaymentMethod,
   type PersonalExpenseId,
   type PersonalExpenseRepository,
   type UserId,
@@ -37,12 +38,14 @@ export class SupabasePersonalExpenseRepository implements PersonalExpenseReposit
         sourceId: row.source_id,
         externalId: row.external_id,
         importedAt: new Date(row.imported_at),
+        paymentMethod: (row as Record<string, unknown>)['payment_method'] as PaymentMethod | null ?? null,
       }),
     )
   }
 
   async save(expense: PersonalExpense): Promise<void> {
     const supabase = await createClient()
+    // payment_method is a new column not yet in generated types — cast as never until pnpm gen:types runs
     const { error } = await supabase.from('personal_expenses').upsert({
       id: expense.id,
       owner_id: expense.ownerId,
@@ -52,7 +55,8 @@ export class SupabasePersonalExpenseRepository implements PersonalExpenseReposit
       description: expense.description,
       source_id: expense.sourceId,
       external_id: expense.externalId,
-    })
+      payment_method: expense.paymentMethod,
+    } as never)
     if (error) throw new Error(`Failed to save personal expense: ${error.message}`)
   }
 

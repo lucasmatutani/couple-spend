@@ -58,29 +58,37 @@ export class CalculateIndividualBudgetUseCase {
     }
 
     const totalIncomeCents = incomes.reduce((sum, i) => sum + i.amount.cents, 0)
-    const personalExpenseCents = personalExpenses.reduce((sum, e) => sum + e.amount.cents, 0)
     const totalInvestedCents = investments.reduce((sum, i) => sum + i.amount.cents, 0)
 
-    const totalSpentCents = sharedShareCents + personalExpenseCents
-    const surplusCents = totalIncomeCents - totalSpentCents - totalInvestedCents
-
-    const pctSpent = totalIncomeCents > 0 ? totalSpentCents / totalIncomeCents : 0
-    const pctInvested = totalIncomeCents > 0 ? totalInvestedCents / totalIncomeCents : 0
-
-    // Compute per-bucket breakdown from personal expenses + category data
+    // Fetch categories to identify refunds and budget buckets.
     const firstHousehold = households[0]
     const catRows = firstHousehold ? await this.categoryRepo.findAll(firstHousehold.id) : []
     const catBuckets = new Map(catRows.map((c) => [c.id as string, c.budgetBucket] as const))
+    const refundCategoryId = catRows.find((c) => c.name === 'Reembolsos')?.id as string | undefined
 
+    // Refunds (Reembolsos) reduce spending rather than adding to it.
+    let personalExpenseCents = 0
     let bucketNeeds = 0
     let bucketWants = 0
     let bucketSavings = 0
     for (const e of personalExpenses) {
-      const bucket = catBuckets.get(e.categoryId as string) ?? 'needs'
-      if (bucket === 'needs') bucketNeeds += e.amount.cents
-      else if (bucket === 'wants') bucketWants += e.amount.cents
-      else bucketSavings += e.amount.cents
+      const catId = e.categoryId as string
+      const isRefund = refundCategoryId !== undefined && catId === refundCategoryId
+      if (isRefund) {
+        personalExpenseCents -= e.amount.cents
+      } else {
+        personalExpenseCents += e.amount.cents
+        const bucket = catBuckets.get(catId) ?? 'needs'
+        if (bucket === 'needs') bucketNeeds += e.amount.cents
+        else if (bucket === 'wants') bucketWants += e.amount.cents
+        else bucketSavings += e.amount.cents
+      }
     }
+
+    const totalSpentCents = sharedShareCents + personalExpenseCents
+    const surplusCents = totalIncomeCents - totalSpentCents - totalInvestedCents
+    const pctSpent = totalIncomeCents > 0 ? totalSpentCents / totalIncomeCents : 0
+    const pctInvested = totalIncomeCents > 0 ? totalInvestedCents / totalIncomeCents : 0
 
     const pctByBucket = {
       needs: totalIncomeCents > 0 ? bucketNeeds / totalIncomeCents : 0,

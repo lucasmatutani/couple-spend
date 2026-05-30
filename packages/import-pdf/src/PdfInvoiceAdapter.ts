@@ -89,24 +89,36 @@ export class PdfInvoiceAdapter implements TransactionSource {
 
     const { institution, statementPeriod, transactions, warnings } = result.data
 
+    // Count occurrences of each base hash so identical transactions get distinct externalIds.
+    const hashCount = new Map<string, number>()
+
     return {
-      transactions: transactions.map((t): RawTransaction => ({
-        externalId: createHash('sha256')
+      transactions: transactions.map((t): RawTransaction => {
+        const base = createHash('sha256')
           .update(`${t.occurredAt}|${t.amountCents}|${t.description.toLowerCase().trim()}`)
-          .digest('hex'),
-        occurredAt: new Date(t.occurredAt),
-        amountCents: t.type === 'expense' ? t.amountCents : -t.amountCents,
-        description: t.description,
-        currency: 'BRL',
-        sourceInstitution: this.institutionHint ?? institution,
-        rawType: t.type === 'expense' ? 'DEBIT' : 'CREDIT',
-        metadata: {
-          extractedBy: 'claude-sonnet-4-6',
-          installment: t.installment,
-          inputTokens: message.usage.input_tokens,
-          outputTokens: message.usage.output_tokens,
-        },
-      })),
+          .digest('hex')
+        const n = hashCount.get(base) ?? 0
+        hashCount.set(base, n + 1)
+        const externalId = n === 0
+          ? base
+          : createHash('sha256').update(`${base}|${n}`).digest('hex')
+
+        return {
+          externalId,
+          occurredAt: new Date(t.occurredAt),
+          amountCents: t.type === 'expense' ? t.amountCents : -t.amountCents,
+          description: t.description,
+          currency: 'BRL',
+          sourceInstitution: this.institutionHint ?? institution,
+          rawType: t.type === 'expense' ? 'DEBIT' : 'CREDIT',
+          metadata: {
+            extractedBy: 'claude-sonnet-4-6',
+            installment: t.installment,
+            inputTokens: message.usage.input_tokens,
+            outputTokens: message.usage.output_tokens,
+          },
+        }
+      }),
       effectiveRange: {
         from: new Date(statementPeriod.from),
         to: new Date(statementPeriod.to),

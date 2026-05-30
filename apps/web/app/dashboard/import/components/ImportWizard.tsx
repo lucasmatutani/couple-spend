@@ -316,7 +316,12 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
 
   // Step 3 — Review
   if (step === 3) {
-    const included = rows.filter((r) => !r.excluded).length
+    const includedRows = rows.filter((r) => !r.excluded)
+    const included = includedRows.length
+    const purchaseCents = includedRows.filter((r) => r.amountCents > 0).reduce((s, r) => s + r.amountCents, 0)
+    const creditCents = includedRows.filter((r) => r.amountCents < 0).reduce((s, r) => s + Math.abs(r.amountCents), 0)
+    const netCents = purchaseCents - creditCents
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -329,6 +334,26 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
               {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Importando...</> : `Importar ${included} transações`}
             </Button>
           </div>
+        </div>
+
+        <div className="rounded-lg border bg-muted/30 px-4 py-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+          <span className="text-muted-foreground">
+            Compras: <span className="font-medium text-foreground">
+              R$ {(purchaseCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </span>
+          {creditCents > 0 && (
+            <span className="text-muted-foreground">
+              Créditos: <span className="font-medium text-green-600">
+                −R$ {(creditCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </span>
+          )}
+          <span className="text-muted-foreground">
+            Total da fatura: <span className="font-semibold text-foreground">
+              R$ {(netCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </span>
         </div>
 
         {preview?.warnings && preview.warnings.length > 0 && (

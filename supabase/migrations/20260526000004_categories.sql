@@ -54,16 +54,16 @@ create policy categories_delete on public.categories
 -- Default split rules follow the spec table; Entertainment/Clothing default to
 -- ONLY_PAYER because they are typically personal choices paid by one member.
 insert into public.categories (name, budget_bucket, default_split_rule, is_template) values
-  ('Housing',       'needs',   'EQUAL',       true),
-  ('Utilities',     'needs',   'EQUAL',       true),
-  ('Groceries',     'needs',   'EQUAL',       true),
-  ('Transport',     'needs',   'EQUAL',       true),
-  ('Health',        'needs',   'EQUAL',       true),
-  ('Education',     'needs',   'EQUAL',       true),
-  ('Subscriptions', 'wants',   'EQUAL',       true),
-  ('Entertainment', 'wants',   'ONLY_PAYER',  true),
-  ('Clothing',      'wants',   'ONLY_PAYER',  true),
-  ('Dining out',    'wants',   'EQUAL',       true),
-  ('Investments',   'savings', 'EQUAL',       true),
-  ('Refunds',       'needs',   'EQUAL',       true),
-  ('Other',         'needs',   'EQUAL',       true);
+  ('Moradia',       'needs',   'EQUAL',       true),
+  ('Serviços',      'needs',   'EQUAL',       true),
+  ('Mercado',       'needs',   'EQUAL',       true),
+  ('Transporte',    'needs',   'EQUAL',       true),
+  ('Saúde',         'needs',   'EQUAL',       true),
+  ('Educação',      'needs',   'EQUAL',       true),
+  ('Assinaturas',   'wants',   'EQUAL',       true),
+  ('Lazer',         'wants',   'ONLY_PAYER',  true),
+  ('Roupas',        'wants',   'ONLY_PAYER',  true),
+  ('Restaurantes',  'wants',   'EQUAL',       true),
+  ('Investimentos', 'savings', 'EQUAL',       true),
+  ('Reembolsos',    'needs',   'EQUAL',       true),
+  ('Outros',        'needs',   'EQUAL',       true);

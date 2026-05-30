@@ -9,15 +9,17 @@ export class SupabaseImportRepository implements TransactionRepository {
   ): Promise<boolean> {
     const supabase = await createClient()
 
-    // Check shared expenses (household scope)
-    const { count: expenseCount } = await supabase
-      .from('expenses')
-      .select('id', { count: 'exact', head: true })
-      .eq('household_id', householdId)
-      .eq('source_id', sourceId)
-      .eq('external_id', externalId)
+    // PDF invoice imports live in personal_expenses — skip the shared expenses check.
+    if (sourceId !== 'pdf-invoice') {
+      const { count: expenseCount } = await supabase
+        .from('expenses')
+        .select('id', { count: 'exact', head: true })
+        .eq('household_id', householdId)
+        .eq('source_id', sourceId)
+        .eq('external_id', externalId)
 
-    if ((expenseCount ?? 0) > 0) return true
+      if ((expenseCount ?? 0) > 0) return true
+    }
 
     // Check personal expenses (owner scope — RLS applies auth.uid())
     const { count: personalCount } = await supabase
@@ -55,5 +57,44 @@ export class SupabaseImportRepository implements TransactionRepository {
     })
 
     if (error) throw new Error(`Failed to save imported transactions: ${error.message}`)
+  }
+
+  async savePersonalBatch(
+    transactions: ImportedTransaction[],
+    paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other',
+    billingOccurredAt: string,
+  ): Promise<void> {
+    if (transactions.length === 0) return
+
+    const supabase = await createClient()
+
+    const externalIds = transactions.map((t) => t.raw.externalId)
+    const sourceId = transactions[0]!.sourceId
+
+    // Remove stale records from both tables so re-imports always use the correct billing month.
+    await Promise.all([
+      supabase.from('expenses').delete().eq('source_id', sourceId).in('external_id', externalIds),
+      supabase.from('personal_expenses').delete().eq('source_id', sourceId).in('external_id', externalIds),
+    ])
+
+    const rows = transactions.map((t) => ({
+      id: crypto.randomUUID(),
+      owner_id: t.ownerId,
+      category_id: t.categoryId,
+      occurred_at: billingOccurredAt,
+      amount_cents: Math.abs(t.raw.amountCents),
+      description: t.raw.description || null,
+      source_id: t.sourceId,
+      external_id: t.raw.externalId,
+      imported_at: t.importedAt.toISOString(),
+      payment_method: paymentMethod,
+    }))
+
+    const { error } = await supabase.from('personal_expenses').upsert(rows as never, {
+      onConflict: 'owner_id,source_id,external_id',
+      ignoreDuplicates: true,
+    })
+
+    if (error) throw new Error(`Failed to save personal imported transactions: ${error.message}`)
   }
 }

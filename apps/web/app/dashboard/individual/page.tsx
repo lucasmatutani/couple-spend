@@ -19,6 +19,7 @@ import RecurringPersonalExpensesSheet from './components/RecurringPersonalExpens
 import SurplusCard from './components/SurplusCard'
 import InvestmentSummaryCard from './components/InvestmentSummaryCard'
 import GoalStatusBanner from './components/GoalStatusBanner'
+import CreditCardExpensesCard from './components/CreditCardExpensesCard'
 
 export default async function IndividualPage({
   searchParams,
@@ -62,7 +63,7 @@ export default async function IndividualPage({
       // Direct query to include recurring_personal_expense_id
       supabase
         .from('personal_expenses')
-        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id')
+        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method')
         .eq('owner_id', user.id)
         .gte('occurred_at', start)
         .lte('occurred_at', end),
@@ -126,6 +127,7 @@ export default async function IndividualPage({
   const peRows = personalExpenseRows.data ?? []
   const personalExpenseDtos: PersonalExpenseDto[] = peRows.map((r) => {
     const cat = categoryMap.get(r.category_id)
+    const row = r as typeof r & { payment_method?: string | null }
     return {
       id: r.id,
       occurredAt: r.occurred_at,
@@ -136,6 +138,7 @@ export default async function IndividualPage({
       categoryName: cat?.name ?? 'Sem categoria',
       budgetBucket: cat?.budgetBucket ?? 'needs',
       recurringPersonalExpenseId: r.recurring_personal_expense_id,
+      paymentMethod: (row.payment_method ?? null) as PersonalExpenseDto['paymentMethod'],
     }
   })
 
@@ -211,6 +214,8 @@ export default async function IndividualPage({
         evaluations={goalEvaluations}
         totalIncomeCents={budgetSummary.totalIncomeCents}
       />
+
+      <CreditCardExpensesCard expenses={personalExpenseDtos} />
 
       <CategoryBreakdown
         expenses={personalExpenseDtos}

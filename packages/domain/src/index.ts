@@ -38,6 +38,7 @@ export type { SplitRuleType } from './SplitRule.js'
 // Entities
 export { Expense } from './entities/Expense.js'
 export { PersonalExpense } from './entities/PersonalExpense.js'
+export type { PaymentMethod } from './entities/PersonalExpense.js'
 export { Income } from './entities/Income.js'
 export { Investment } from './entities/Investment.js'
 export { Household } from './entities/Household.js'

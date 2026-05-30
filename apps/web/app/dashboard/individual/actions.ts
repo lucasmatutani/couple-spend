@@ -14,6 +14,7 @@ import {
   toInvestmentId,
   toPersonalExpenseId,
   toUserId,
+  type PaymentMethod,
 } from '@splitwise/domain'
 
 type ActionResult = { success: true } | { success: false; error: string }
@@ -188,11 +189,14 @@ export async function deleteIncomeFuture(
 // Personal expense
 // ---------------------------------------------------------------------------
 
+const PAYMENT_METHODS = ['credit_card', 'debit', 'pix', 'cash', 'other'] as const
+
 const personalExpenseSchema = z.object({
   categoryId: z.string().min(1),
   occurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   amountCents: z.number().int().positive(),
   description: z.string().nullable(),
+  paymentMethod: z.enum(PAYMENT_METHODS).nullable(),
 })
 
 export async function addPersonalExpense(input: unknown): Promise<ActionResult> {
@@ -213,6 +217,7 @@ export async function addPersonalExpense(input: unknown): Promise<ActionResult> 
     description: d.description,
     sourceId: 'manual',
     externalId: crypto.randomUUID(),
+    paymentMethod: d.paymentMethod as PaymentMethod | null,
   })
 
   await getPersonalExpenseRepository().save(expense)

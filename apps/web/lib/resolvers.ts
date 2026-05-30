@@ -15,10 +15,6 @@ export async function buildCategoryResolver(
   ownerId: UserId,
   otherCategoryId: CategoryId,
 ): Promise<CategoryResolver> {
-  if (process.env.ENABLE_LLM_CATEGORIZATION === 'true') {
-    console.warn('LLM resolver not yet implemented, ignoring ENABLE_LLM_CATEGORIZATION flag.')
-  }
-
   const categories = await new SupabaseCategoryRepository().findAll(householdId)
   const nameToId = new Map(categories.map((c) => [c.name, c.id as string]))
 

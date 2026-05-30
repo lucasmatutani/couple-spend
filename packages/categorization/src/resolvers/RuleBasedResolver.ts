@@ -16,16 +16,16 @@ export type CategoryRule = {
  * buildCategoryResolver() in apps/web/lib/resolvers.ts resolves them to UUIDs.
  */
 export const DEFAULT_RULES: CategoryRule[] = [
-  { pattern: 'posto|shell|petrobras|ipiranga|combustivel', categoryId: 'Transport', priority: 100 },
-  { pattern: 'uber|99taxi|cabify|metro sp|onibus|metrô', categoryId: 'Transport', priority: 99 },
-  { pattern: 'supermercado|mercado|extra|carrefour|pao de acucar|hortifruti', categoryId: 'Groceries', priority: 98 },
-  { pattern: 'escola|colegio|faculdade|universidade|mensalidade', categoryId: 'Education', priority: 97 },
-  { pattern: 'farmacia|drogaria|ultrafarma|droga raia|pacheco', categoryId: 'Health', priority: 96 },
-  { pattern: 'netflix|spotify|amazon prime|disney|hbo|globoplay|deezer', categoryId: 'Subscriptions', priority: 95 },
-  { pattern: 'restaurante|lanchonete|mcdonalds|ifood|rappi|burger king', categoryId: 'Dining out', priority: 94 },
-  { pattern: 'aluguel|condominio', categoryId: 'Housing', priority: 93 },
-  { pattern: 'energia|enel|cpfl|cemig|light|elektro', categoryId: 'Utilities', priority: 92 },
-  { pattern: 'internet|claro|vivo|tim\\b|oi\\b|net combo', categoryId: 'Utilities', priority: 91 },
+  { pattern: 'posto|shell|petrobras|ipiranga|combustivel', categoryId: 'Transporte', priority: 100 },
+  { pattern: 'uber|99taxi|cabify|metro sp|onibus|metrô', categoryId: 'Transporte', priority: 99 },
+  { pattern: 'supermercado|mercado|extra|carrefour|pao de acucar|hortifruti', categoryId: 'Mercado', priority: 98 },
+  { pattern: 'escola|colegio|faculdade|universidade|mensalidade', categoryId: 'Educação', priority: 97 },
+  { pattern: 'farmacia|drogaria|ultrafarma|droga raia|pacheco', categoryId: 'Saúde', priority: 96 },
+  { pattern: 'netflix|spotify|amazon prime|disney|hbo|globoplay|deezer', categoryId: 'Assinaturas', priority: 95 },
+  { pattern: 'restaurante|lanchonete|mcdonalds|ifood|rappi|burger king', categoryId: 'Restaurantes', priority: 94 },
+  { pattern: 'aluguel|condominio', categoryId: 'Moradia', priority: 93 },
+  { pattern: 'energia|enel|cpfl|cemig|light|elektro', categoryId: 'Serviços', priority: 92 },
+  { pattern: 'internet|claro|vivo|tim\\b|oi\\b|net combo', categoryId: 'Serviços', priority: 91 },
 ]
 
 export class RuleBasedResolver implements CategoryResolverChainLink {
