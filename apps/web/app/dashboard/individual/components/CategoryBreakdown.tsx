@@ -67,7 +67,6 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
     setDeleting(null)
   }
 
-  // Aggregate by category
   type CategorySummary = {
     categoryId: string
     categoryName: string
@@ -76,8 +75,18 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
     expenses: PersonalExpenseDto[]
   }
 
+  // Credit card expenses are collapsed into a single "Cartão de crédito" line (net of refunds).
+  const ccExpenses = expenses.filter((e) => e.paymentMethod === 'credit_card')
+  const nonCcExpenses = expenses.filter((e) => e.paymentMethod !== 'credit_card')
+
+  const ccNetCents = ccExpenses.reduce(
+    (sum, e) => sum + (e.categoryName === 'Reembolsos' ? -e.amountCents : e.amountCents),
+    0,
+  )
+
   const byCategory = new Map<string, CategorySummary>()
-  for (const e of expenses) {
+
+  for (const e of nonCcExpenses) {
     const existing = byCategory.get(e.categoryId)
     if (existing) {
       existing.totalCents += e.amountCents
@@ -91,6 +100,16 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
         expenses: [e],
       })
     }
+  }
+
+  if (ccNetCents > 0) {
+    byCategory.set('__credit_card__', {
+      categoryId: '__credit_card__',
+      categoryName: 'Cartão de crédito',
+      budgetBucket: 'needs',
+      totalCents: ccNetCents,
+      expenses: [],
+    })
   }
 
   const summaries = [...byCategory.values()]
@@ -167,7 +186,7 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
                     />
                   </div>
 
-                  {/* Individual expense rows */}
+                  {/* Individual expense rows — hidden for the collapsed credit card entry */}
                   <div className="pl-2 space-y-1 pt-1">
                     {cat.expenses.map((e) => (
                       <div key={e.id} className="flex items-center justify-between text-xs text-muted-foreground">
