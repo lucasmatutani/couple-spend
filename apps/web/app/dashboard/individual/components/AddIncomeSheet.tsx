@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,22 +26,32 @@ function parseBrl(s: string): number {
   return Math.round(parseFloat(s.replace(/\./g, '').replace(',', '.')) * 100)
 }
 
-function todayIso(): string {
-  return new Date().toISOString().split('T')[0]!
+function defaultDate(monthParam: string | null): string {
+  if (!monthParam) return new Date().toISOString().split('T')[0]!
+  const [y, m] = monthParam.split('-').map(Number) as [number, number]
+  const day = new Date().getDate()
+  const lastDay = new Date(y, m, 0).getDate()
+  return `${y}-${String(m).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`
 }
 
-type Props = { trigger: React.ReactNode }
+type Props = { trigger: React.ReactNode; currentMonth?: string }
 
-export default function AddIncomeSheet({ trigger }: Props) {
+export default function AddIncomeSheet({ trigger, currentMonth }: Props) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [form, setForm] = useState({
     source: '',
     amountBrl: '',
-    occurredAt: todayIso(),
+    occurredAt: defaultDate(currentMonth ?? null),
     recurring: false,
   })
+
+  function handleOpenChange(next: boolean) {
+    if (next) setForm((prev) => ({ ...prev, occurredAt: defaultDate(currentMonth ?? null), recurring: false }))
+    setOpen(next)
+  }
 
   function set<K extends keyof typeof form>(field: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -69,12 +80,13 @@ export default function AddIncomeSheet({ trigger }: Props) {
     setLoading(false)
     if (result.success) {
       setOpen(false)
-      setForm({ source: '', amountBrl: '', occurredAt: todayIso(), recurring: false })
+      setForm({ source: '', amountBrl: '', occurredAt: defaultDate(currentMonth ?? null), recurring: false })
+      router.refresh()
     }
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent>
         <SheetHeader>

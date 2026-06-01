@@ -33,11 +33,12 @@ type Props = {
   expenses: PersonalExpenseDto[]
   categories: CategoryDto[]
   totalIncomeCents: number
+  currentMonth: string
 }
 
 type Filter = 'all' | 'needs' | 'wants' | 'savings'
 
-export default function CategoryBreakdown({ expenses, categories, totalIncomeCents }: Props) {
+export default function CategoryBreakdown({ expenses, categories, totalIncomeCents, currentMonth }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [scopeTarget, setScopeTarget] = useState<PersonalExpenseDto | null>(null)
@@ -124,6 +125,7 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
         <CardTitle className="text-base">Despesas pessoais</CardTitle>
         <AddPersonalExpenseSheet
           categories={categories}
+          currentMonth={currentMonth}
           trigger={
             <Button size="sm" variant="outline" className="gap-1 h-8">
               <Plus className="h-3 w-3" />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,22 +41,32 @@ function parseBrl(s: string): number {
   return Math.round(parseFloat(s.replace(/\./g, '').replace(',', '.')) * 100)
 }
 
-function todayIso(): string {
-  return new Date().toISOString().split('T')[0]!
+function defaultDate(monthParam: string | null): string {
+  if (!monthParam) return new Date().toISOString().split('T')[0]!
+  const [y, m] = monthParam.split('-').map(Number) as [number, number]
+  const day = new Date().getDate()
+  const lastDay = new Date(y, m, 0).getDate()
+  return `${y}-${String(m).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`
 }
 
-type Props = { trigger: React.ReactNode }
+type Props = { trigger: React.ReactNode; currentMonth?: string }
 
-export default function AddInvestmentSheet({ trigger }: Props) {
+export default function AddInvestmentSheet({ trigger, currentMonth }: Props) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [form, setForm] = useState({
     assetClass: 'stocks' as string,
     amountBrl: '',
-    occurredAt: todayIso(),
+    occurredAt: defaultDate(currentMonth ?? null),
     description: '',
   })
+
+  function handleOpenChange(next: boolean) {
+    if (next) setForm((prev) => ({ ...prev, occurredAt: defaultDate(currentMonth ?? null) }))
+    setOpen(next)
+  }
 
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -84,12 +95,13 @@ export default function AddInvestmentSheet({ trigger }: Props) {
     setLoading(false)
     if (result.success) {
       setOpen(false)
-      setForm({ assetClass: 'stocks', amountBrl: '', occurredAt: todayIso(), description: '' })
+      setForm({ assetClass: 'stocks', amountBrl: '', occurredAt: defaultDate(currentMonth ?? null), description: '' })
+      router.refresh()
     }
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent>
         <SheetHeader>

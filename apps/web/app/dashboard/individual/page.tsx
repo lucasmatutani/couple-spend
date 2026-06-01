@@ -188,10 +188,10 @@ export default async function IndividualPage({
 
       <div className="grid gap-4 md:grid-cols-2">
         <SurplusCard summary={budgetSummary} />
-        <InvestmentSummaryCard investments={investmentDtos} summary={budgetSummary} />
+        <InvestmentSummaryCard investments={investmentDtos} summary={budgetSummary} currentMonth={month.toString()} />
       </div>
 
-      <IncomeSummaryCard incomes={incomeDtos} totalIncomeCents={budgetSummary.totalIncomeCents} />
+      <IncomeSummaryCard incomes={incomeDtos} totalIncomeCents={budgetSummary.totalIncomeCents} currentMonth={month.toString()} />
 
       {recurringTotalCents > 0 && (
         <Card>
@@ -221,6 +221,7 @@ export default async function IndividualPage({
         expenses={personalExpenseDtos}
         categories={categoryDtos}
         totalIncomeCents={budgetSummary.totalIncomeCents}
+        currentMonth={month.toString()}
       />
     </div>
   )

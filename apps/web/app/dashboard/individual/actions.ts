@@ -19,12 +19,11 @@ import {
 
 type ActionResult = { success: true } | { success: false; error: string }
 
-function monthsUntilYearEnd(): { year: number; month: number }[] {
-  const now = new Date()
-  const currentYear = now.getFullYear()
+function monthsFromDateToYearEnd(startDate: string): { year: number; month: number }[] {
+  const [y, m] = startDate.split('-').map(Number) as [number, number]
   const result = []
-  for (let m = now.getMonth(); m <= 11; m++) {
-    result.push({ year: currentYear, month: m + 1 })
+  for (let month = m; month <= 12; month++) {
+    result.push({ year: y, month })
   }
   return result
 }
@@ -60,7 +59,7 @@ export async function addIncome(input: unknown): Promise<ActionResult> {
 
     if (tmplErr || !template) return { success: false, error: 'Erro ao criar receita recorrente' }
 
-    for (const { year, month } of monthsUntilYearEnd()) {
+    for (const { year, month } of monthsFromDateToYearEnd(d.occurredAt)) {
       const mm = String(month).padStart(2, '0')
       await supabase.from('incomes').insert({
         id: crypto.randomUUID(),

@@ -14,9 +14,10 @@ import type { IncomeDto } from '../types'
 type Props = {
   incomes: IncomeDto[]
   totalIncomeCents: number
+  currentMonth: string
 }
 
-export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) {
+export default function IncomeSummaryCard({ incomes, totalIncomeCents, currentMonth }: Props) {
   const [deleting, setDeleting] = useState<string | null>(null)
 
   // Edit flow
@@ -68,12 +69,15 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents }: Props) 
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">Receitas</CardTitle>
-        <AddIncomeSheet trigger={
-          <Button size="sm" variant="outline" className="gap-1 h-8">
-            <Plus className="h-3 w-3" />
-            Adicionar
-          </Button>
-        } />
+        <AddIncomeSheet
+          currentMonth={currentMonth}
+          trigger={
+            <Button size="sm" variant="outline" className="gap-1 h-8">
+              <Plus className="h-3 w-3" />
+              Adicionar
+            </Button>
+          }
+        />
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-3xl font-bold text-green-600">
