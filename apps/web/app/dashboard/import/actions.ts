@@ -134,7 +134,11 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
 
 type ConfirmResult = { success: true; imported: number; skipped: number } | { success: false; error: string }
 
-export async function confirmImport(rows: ReviewRow[], householdId: string): Promise<ConfirmResult> {
+export async function confirmImport(
+  rows: ReviewRow[],
+  householdId: string,
+  targetMonth?: string, // "YYYY-MM" — when set, overrides billing date for PDF imports
+): Promise<ConfirmResult> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado' }
@@ -195,13 +199,18 @@ export async function confirmImport(rows: ReviewRow[], householdId: string): Pro
           : t,
       )
 
-      // All transactions from a credit card statement belong to the billing month,
-      // which is the month of the latest transaction in the statement.
-      const latestDate = normalizedPdfRows.reduce<Date>(
-        (max, t) => (t.raw.occurredAt > max ? t.raw.occurredAt : max),
-        normalizedPdfRows[0]!.raw.occurredAt,
-      )
-      const billingOccurredAt = `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-01`
+      // Billing month: use the explicit targetMonth from the URL when provided,
+      // otherwise fall back to the latest transaction date in the statement.
+      let billingOccurredAt: string
+      if (targetMonth) {
+        billingOccurredAt = `${targetMonth}-01`
+      } else {
+        const latestDate = normalizedPdfRows.reduce<Date>(
+          (max, t) => (t.raw.occurredAt > max ? t.raw.occurredAt : max),
+          normalizedPdfRows[0]!.raw.occurredAt,
+        )
+        billingOccurredAt = `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-01`
+      }
       await repo.savePersonalBatch(normalizedPdfRows, 'credit_card', billingOccurredAt)
     }
 

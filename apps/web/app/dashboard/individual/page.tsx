@@ -215,7 +215,7 @@ export default async function IndividualPage({
         totalIncomeCents={budgetSummary.totalIncomeCents}
       />
 
-      <CreditCardExpensesCard expenses={personalExpenseDtos} />
+      <CreditCardExpensesCard expenses={personalExpenseDtos} currentMonth={month.toString()} />
 
       <CategoryBreakdown
         expenses={personalExpenseDtos}

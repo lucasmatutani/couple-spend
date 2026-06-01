@@ -1,18 +1,21 @@
 'use client'
 
-import { CreditCard } from 'lucide-react'
+import { CreditCard, Upload } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import ImportInvoiceSheet from './ImportInvoiceSheet'
 import type { PersonalExpenseDto } from '../types'
 
 type Props = {
   expenses: PersonalExpenseDto[]
+  currentMonth: string
 }
 
 function fmt(cents: number): string {
   return `R$ ${(Math.abs(cents) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 }
 
-export default function CreditCardExpensesCard({ expenses }: Props) {
+export default function CreditCardExpensesCard({ expenses, currentMonth }: Props) {
   const ccExpenses = expenses.filter((e) => e.paymentMethod === 'credit_card')
 
   const isRefund = (e: PersonalExpenseDto) => e.categoryName === 'Reembolsos'
@@ -41,16 +44,25 @@ export default function CreditCardExpensesCard({ expenses }: Props) {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <CreditCard className="h-4 w-4 text-muted-foreground" />
           Cartão de crédito
           {ccExpenses.length > 0 && (
-            <span className={`ml-auto text-sm font-semibold ${totalCents < 0 ? 'text-green-600' : ''}`}>
+            <span className={`text-sm font-semibold ${totalCents < 0 ? 'text-green-600' : ''}`}>
               {totalCents < 0 ? '-' : ''}{fmt(totalCents)}
             </span>
           )}
         </CardTitle>
+        <ImportInvoiceSheet
+          currentMonth={currentMonth}
+          trigger={
+            <Button size="sm" variant="outline" className="gap-1 h-8 shrink-0">
+              <Upload className="h-3 w-3" />
+              Importar fatura
+            </Button>
+          }
+        />
       </CardHeader>
       <CardContent>
         {ccExpenses.length === 0 ? (
