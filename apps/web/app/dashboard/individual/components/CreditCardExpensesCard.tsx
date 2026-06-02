@@ -24,14 +24,17 @@ import ImportInvoiceDialog from './ImportInvoiceSheet'
 import { updateCreditCardExpense, deleteCreditCardMonth } from '../actions'
 import type { CategoryDto, PersonalExpenseDto } from '../types'
 
-const SPLIT_OPTIONS = [
-  { value: '1', label: 'Só eu' },
-  { value: '2', label: '÷ 2 pessoas' },
-  { value: '3', label: '÷ 3 pessoas' },
-  { value: '4', label: '÷ 4 pessoas' },
-  { value: '5', label: '÷ 5 pessoas' },
-  { value: 'reimbursed', label: 'Reembolso total' },
-]
+function getSplitOptions(otherMemberName: string | null) {
+  return [
+    { value: '1', label: 'Só eu' },
+    ...(otherMemberName ? [{ value: 'partner', label: `Dividir com ${otherMemberName}` }] : []),
+    { value: '2', label: '÷ 2 pessoas' },
+    { value: '3', label: '÷ 3 pessoas' },
+    { value: '4', label: '÷ 4 pessoas' },
+    { value: '5', label: '÷ 5 pessoas' },
+    { value: 'reimbursed', label: 'Reembolso total' },
+  ]
+}
 
 function fmt(cents: number): string {
   return `R$ ${(Math.abs(cents) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -56,18 +59,19 @@ type Props = {
   expenses: PersonalExpenseDto[]
   categories: CategoryDto[]
   currentMonth: string
+  otherMemberName: string | null
 }
 
 type EditState = {
   categoryId: string
   amountBrl: string
-  /** '1'..'10' or 'reimbursed' */
+  /** '1'..'10', 'partner', or 'reimbursed' */
   splitParts: string
   saving: boolean
   error: string | null
 }
 
-export default function CreditCardExpensesCard({ expenses, categories, currentMonth }: Props) {
+export default function CreditCardExpensesCard({ expenses, categories, currentMonth, otherMemberName }: Props) {
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editState, setEditState] = useState<EditState | null>(null)
@@ -79,10 +83,11 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
 
   function startEdit(e: PersonalExpenseDto) {
     setEditingId(e.id)
+    const splitValue = e.reimbursed ? 'reimbursed' : e.splitWithPartner ? 'partner' : String(e.splitParts)
     setEditState({
       categoryId: e.categoryId,
       amountBrl: centsToBrl(e.amountCents),
-      splitParts: e.reimbursed ? 'reimbursed' : String(e.splitParts),
+      splitParts: splitValue,
       saving: false,
       error: null,
     })
@@ -101,13 +106,15 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
       return
     }
     const isReimbursed = editState.splitParts === 'reimbursed'
+    const isPartnerSplit = editState.splitParts === 'partner'
     setEditState((s) => s && ({ ...s, saving: true, error: null }))
     const result = await updateCreditCardExpense({
       id: e.id,
       categoryId: editState.categoryId,
       amountCents,
-      splitParts: isReimbursed ? 1 : parseInt(editState.splitParts, 10),
+      splitParts: isPartnerSplit ? 2 : isReimbursed ? 1 : parseInt(editState.splitParts, 10),
       reimbursed: isReimbursed,
+      splitWithPartner: isPartnerSplit,
       description: e.description,
       occurredAt: e.occurredAt,
     })
@@ -202,7 +209,8 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
             {ccExpenses.map((expense) => {
               const isRefund = expense.categoryName === 'Reembolsos'
               const isReimbursed = expense.reimbursed
-              const isSplit = !isReimbursed && expense.splitParts > 1
+              const isPartnerSplit = expense.splitWithPartner
+              const isSplit = !isReimbursed && !isPartnerSplit && expense.splitParts > 1
               const effective = effectiveCents(expense)
               const isEditing = editingId === expense.id
 
@@ -257,7 +265,7 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {SPLIT_OPTIONS.map((o) => (
+                            {getSplitOptions(otherMemberName).map((o) => (
                               <SelectItem key={o.value} value={o.value} className="text-xs">
                                 {o.label}
                               </SelectItem>
@@ -317,8 +325,12 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
                     <Badge variant="outline" className="text-xs shrink-0 text-orange-600 border-orange-200">
                       Reembolso
                     </Badge>
-                  ) : isSplit ? (
+                  ) : isPartnerSplit ? (
                     <Badge variant="outline" className="text-xs shrink-0 text-blue-600 border-blue-200">
+                      ÷ {otherMemberName ?? 'parceiro'}
+                    </Badge>
+                  ) : isSplit ? (
+                    <Badge variant="outline" className="text-xs shrink-0 text-muted-foreground border-muted">
                       ÷{expense.splitParts}
                     </Badge>
                   ) : null}
@@ -330,7 +342,7 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
                         <p className="text-sm font-medium text-muted-foreground">R$ 0,00</p>
                         <p className="text-xs text-muted-foreground line-through">{fmt(expense.amountCents)}</p>
                       </>
-                    ) : isSplit ? (
+                    ) : isPartnerSplit || isSplit ? (
                       <>
                         <p className={`text-sm font-medium ${isRefund ? 'text-green-600' : ''}`}>
                           {isRefund ? '-' : ''}{fmt(effective)}

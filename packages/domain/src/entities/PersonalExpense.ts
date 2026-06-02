@@ -22,6 +22,8 @@ export class PersonalExpense {
     readonly splitParts: number,
     /** True when the expense will be fully reimbursed by a third party — costs R$0 to payer and partner. */
     readonly reimbursed: boolean,
+    /** True when the other household member co-owns this expense and owes their share back. */
+    readonly splitWithPartner: boolean,
   ) {}
 
   /** The user's effective cost: R$0 if reimbursed, otherwise amount / splitParts. */
@@ -43,6 +45,7 @@ export class PersonalExpense {
     paymentMethod?: PaymentMethod | null
     splitParts?: number
     reimbursed?: boolean
+    splitWithPartner?: boolean
   }): PersonalExpense {
     return new PersonalExpense(
       data.id,
@@ -57,6 +60,7 @@ export class PersonalExpense {
       data.paymentMethod ?? null,
       data.splitParts ?? 1,
       data.reimbursed ?? false,
+      data.splitWithPartner ?? false,
     )
   }
 }

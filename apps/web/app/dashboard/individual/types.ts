@@ -21,6 +21,7 @@ export type PersonalExpenseDto = {
   paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other' | null
   splitParts: number
   reimbursed: boolean
+  splitWithPartner: boolean
 }
 
 export type InvestmentDto = {

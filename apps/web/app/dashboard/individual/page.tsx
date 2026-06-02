@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryRepository'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
+import { SupabaseUserRepository } from '@/lib/repositories/SupabaseUserRepository'
 import {
   getIndividualBudgetUseCase,
   getInvestmentRepository,
@@ -46,6 +47,12 @@ export default async function IndividualPage({
   const household = await householdRepo.findFirstByMember(userId)
   if (!household) redirect('/onboarding')
 
+  const memberIds = household.members.map((m) => m.userId)
+  const profiles = await new SupabaseUserRepository().findManyById(memberIds)
+  const profileMap = new Map(profiles.map((p) => [p.id as string, p.displayName]))
+  const otherMember = household.members.find((m) => m.userId !== user.id)
+  const otherMemberName = otherMember ? (profileMap.get(otherMember.userId) ?? null) : null
+
   const householdId = toHouseholdId(household.id)
   const start = month.startDate().toISOString().split('T')[0]!
   const end = month.endDate().toISOString().split('T')[0]!
@@ -63,7 +70,7 @@ export default async function IndividualPage({
       // Direct query to include recurring_personal_expense_id
       supabase
         .from('personal_expenses')
-        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method, split_parts, reimbursed')
+        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method, split_parts, reimbursed, split_with_partner')
         .eq('owner_id', user.id)
         .gte('occurred_at', start)
         .lte('occurred_at', end),
@@ -140,6 +147,7 @@ export default async function IndividualPage({
       paymentMethod: (r.payment_method ?? null) as PersonalExpenseDto['paymentMethod'],
       splitParts: r.split_parts ?? 1,
       reimbursed: (r as Record<string, unknown>)['reimbursed'] as boolean ?? false,
+      splitWithPartner: (r as Record<string, unknown>)['split_with_partner'] as boolean ?? false,
     }
   })
 
@@ -220,6 +228,7 @@ export default async function IndividualPage({
         expenses={personalExpenseDtos}
         categories={categoryDtos}
         currentMonth={month.toString()}
+        otherMemberName={otherMemberName}
       />
 
       <CategoryBreakdown

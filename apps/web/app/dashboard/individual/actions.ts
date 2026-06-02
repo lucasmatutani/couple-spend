@@ -331,6 +331,7 @@ const updateCCExpenseSchema = z.object({
   amountCents: z.number().int().positive(),
   splitParts: z.number().int().min(1).max(10),
   reimbursed: z.boolean().default(false),
+  splitWithPartner: z.boolean().default(false),
   description: z.string().nullable().optional(),
   occurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
@@ -343,11 +344,11 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado' }
 
-  const { id, categoryId, amountCents, splitParts, reimbursed, description, occurredAt } = parsed.data
+  const { id, categoryId, amountCents, splitParts, reimbursed, splitWithPartner, description, occurredAt } = parsed.data
 
   const { error: updateErr } = await supabase
     .from('personal_expenses')
-    .update({ category_id: categoryId, amount_cents: amountCents, split_parts: splitParts, reimbursed } as never)
+    .update({ category_id: categoryId, amount_cents: amountCents, split_parts: splitParts, reimbursed, split_with_partner: splitWithPartner } as never)
     .eq('id', id)
     .eq('owner_id', user.id)
   if (updateErr) return { success: false, error: 'Erro ao atualizar despesa' }
@@ -355,7 +356,7 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
   // Sync the household share —————————————————————————————————————————————
   const SOURCE_SPLIT = 'cc-split'
 
-  const needsHouseholdSplit = !reimbursed && splitParts > 1
+  const needsHouseholdSplit = splitWithPartner && !reimbursed
 
   if (needsHouseholdSplit) {
     // Each part = user's share = partner's share = amountCents / splitParts.
