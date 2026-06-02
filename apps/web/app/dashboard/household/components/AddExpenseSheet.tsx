@@ -43,10 +43,11 @@ function todayIso(): string {
 type Props = {
   householdId: string
   categories: CategoryDto[]
-  currentUserId: string
+  currentUserName: string
+  otherMemberName: string | null
 }
 
-export default function AddExpenseSheet({ householdId, categories, currentUserId: _ }: Props) {
+export default function AddExpenseSheet({ householdId, categories, currentUserName, otherMemberName }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
@@ -175,8 +176,8 @@ export default function AddExpenseSheet({ householdId, categories, currentUserId
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="EQUAL">Igual</SelectItem>
-                <SelectItem value="ONLY_PAYER">Só pagador</SelectItem>
-                <SelectItem value="ONLY_OTHER">Só outro</SelectItem>
+                <SelectItem value="ONLY_PAYER">Só {currentUserName}</SelectItem>
+                <SelectItem value="ONLY_OTHER">Só {otherMemberName ?? 'outro'}</SelectItem>
                 <SelectItem value="CUSTOM">Personalizado</SelectItem>
               </SelectContent>
             </Select>

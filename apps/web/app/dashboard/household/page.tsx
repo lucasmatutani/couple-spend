@@ -62,6 +62,10 @@ export default async function HouseholdPage({
   const memberIds = household.members.map((m) => m.userId)
   const profiles = await new SupabaseUserRepository().findManyById(memberIds)
   const profileMap = new Map(profiles.map((p) => [p.id as string, p.displayName]))
+
+  const currentUserName = profileMap.get(user.id) ?? 'Eu'
+  const otherMember = household.members.find((m) => m.userId !== user.id)
+  const otherMemberName = otherMember ? (profileMap.get(otherMember.userId) ?? null) : null
   const categoryMap = new Map(categories.map((c) => [c.id as string, c.name]))
 
   const memberBalances: MemberBalanceDto[] = summary.memberBalances.map((b) => ({
@@ -134,11 +138,14 @@ export default async function HouseholdPage({
             categories={categoryDtos}
             recurringExpenses={recurringDtos}
             currentMonth={month.toString()}
+            currentUserName={currentUserName}
+            otherMemberName={otherMemberName}
           />
           <AddExpenseSheet
             householdId={household.id}
             categories={categoryDtos}
-            currentUserId={user.id}
+            currentUserName={currentUserName}
+            otherMemberName={otherMemberName}
           />
         </div>
       </div>

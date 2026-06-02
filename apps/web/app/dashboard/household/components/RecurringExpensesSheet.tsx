@@ -75,6 +75,8 @@ type Props = {
   categories: CategoryDto[]
   recurringExpenses: RecurringExpenseDto[]
   currentMonth: string
+  currentUserName: string
+  otherMemberName: string | null
 }
 
 export default function RecurringExpensesSheet({
@@ -82,6 +84,8 @@ export default function RecurringExpensesSheet({
   categories,
   recurringExpenses,
   currentMonth,
+  currentUserName,
+  otherMemberName,
 }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -220,8 +224,8 @@ export default function RecurringExpensesSheet({
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="EQUAL">Igual</SelectItem>
-              <SelectItem value="ONLY_PAYER">Só pagador</SelectItem>
-              <SelectItem value="ONLY_OTHER">Só outro</SelectItem>
+              <SelectItem value="ONLY_PAYER">Só {currentUserName}</SelectItem>
+              <SelectItem value="ONLY_OTHER">Só {otherMemberName ?? 'outro'}</SelectItem>
               <SelectItem value="CUSTOM">Personalizado</SelectItem>
             </SelectContent>
           </Select>
