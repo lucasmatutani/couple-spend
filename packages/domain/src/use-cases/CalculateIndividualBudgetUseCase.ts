@@ -74,14 +74,15 @@ export class CalculateIndividualBudgetUseCase {
     for (const e of personalExpenses) {
       const catId = e.categoryId as string
       const isRefund = refundCategoryId !== undefined && catId === refundCategoryId
+      const effectiveCents = e.effectiveAmount.cents
       if (isRefund) {
-        personalExpenseCents -= e.amount.cents
+        personalExpenseCents -= effectiveCents
       } else {
-        personalExpenseCents += e.amount.cents
+        personalExpenseCents += effectiveCents
         const bucket = catBuckets.get(catId) ?? 'needs'
-        if (bucket === 'needs') bucketNeeds += e.amount.cents
-        else if (bucket === 'wants') bucketWants += e.amount.cents
-        else bucketSavings += e.amount.cents
+        if (bucket === 'needs') bucketNeeds += effectiveCents
+        else if (bucket === 'wants') bucketWants += effectiveCents
+        else bucketSavings += effectiveCents
       }
     }
 

@@ -19,7 +19,13 @@ export class PersonalExpense {
     readonly externalId: string,
     readonly importedAt: Date,
     readonly paymentMethod: PaymentMethod | null,
+    readonly splitParts: number,
   ) {}
+
+  /** The user's effective cost after applying the split. */
+  get effectiveAmount(): Money {
+    return Money.of(Math.round(this.amount.cents / this.splitParts))
+  }
 
   static create(data: {
     id: PersonalExpenseId
@@ -32,6 +38,7 @@ export class PersonalExpense {
     externalId: string
     importedAt?: Date
     paymentMethod?: PaymentMethod | null
+    splitParts?: number
   }): PersonalExpense {
     return new PersonalExpense(
       data.id,
@@ -44,6 +51,7 @@ export class PersonalExpense {
       data.externalId,
       data.importedAt ?? new Date(),
       data.paymentMethod ?? null,
+      data.splitParts ?? 1,
     )
   }
 }

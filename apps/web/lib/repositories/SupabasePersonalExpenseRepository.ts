@@ -39,6 +39,7 @@ export class SupabasePersonalExpenseRepository implements PersonalExpenseReposit
         externalId: row.external_id,
         importedAt: new Date(row.imported_at),
         paymentMethod: (row as Record<string, unknown>)['payment_method'] as PaymentMethod | null ?? null,
+        splitParts: (row as Record<string, unknown>)['split_parts'] as number ?? 1,
       }),
     )
   }
