@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CreditCard, Pencil, Upload, Trash2, X, Check } from 'lucide-react'
+import { CreditCard, Pencil, Upload, Trash2, X, Check, PieChart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import ImportInvoiceDialog from './ImportInvoiceSheet'
+import CreditCardCategoryChart from './CreditCardCategoryChart'
 import { updateCreditCardExpense, deleteCreditCardMonth } from '../actions'
 import type { CategoryDto, PersonalExpenseDto } from '../types'
 
@@ -77,6 +78,7 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
   const [editState, setEditState] = useState<EditState | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showChart, setShowChart] = useState(false)
 
   const ccExpenses = expenses.filter((e) => e.paymentMethod === 'credit_card')
   const totalCents = ccExpenses.reduce((sum, e) => sum + effectiveCents(e), 0)
@@ -143,6 +145,12 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
 
   return (
     <>
+      <CreditCardCategoryChart
+        open={showChart}
+        onClose={() => setShowChart(false)}
+        expenses={expenses}
+      />
+
       {/* Confirmation dialog */}
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="max-w-sm">
@@ -178,14 +186,25 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
         </CardTitle>
         <div className="flex items-center gap-2">
           {ccExpenses.length > 0 && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowChart(true)}
+                title="Ver gráfico por categoria"
+              >
+                <PieChart className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
           )}
           <ImportInvoiceDialog
             currentMonth={currentMonth}
