@@ -132,7 +132,16 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   }
 }
 
-type ConfirmResult = { success: true; imported: number; skipped: number } | { success: false; error: string }
+const PT_MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+function formatMonthLabel(occurredAt: string): string {
+  const [y, m] = occurredAt.split('-') as [string, string]
+  return `${PT_MONTHS[parseInt(m, 10) - 1]} de ${y}`
+}
+
+type ConfirmResult =
+  | { success: true; imported: number; skipped: number; conflictMessage: string | undefined }
+  | { success: false; error: string }
 
 export async function confirmImport(
   rows: ReviewRow[],
@@ -176,12 +185,15 @@ export async function confirmImport(
     })
   }
 
+  let pdfInserted = 0
+  let conflictMonth: string | null = null
+  const pdfRows = toSave.filter((t) => t.sourceId === 'pdf-invoice')
+  const sharedRows = toSave.filter((t) => t.sourceId !== 'pdf-invoice')
+
   if (toSave.length > 0) {
-    // PDF invoice imports are personal credit card expenses; everything else goes to shared expenses.
-    const pdfRows = toSave.filter((t) => t.sourceId === 'pdf-invoice')
-    const sharedRows = toSave.filter((t) => t.sourceId !== 'pdf-invoice')
 
     if (pdfRows.length > 0) {
+      // PDF invoice imports are personal credit card expenses; everything else goes to shared expenses.
       // Negative amountCents = credit/refund on the statement. Override categoryId to "Reembolsos"
       // so the card can display them as credits that reduce the total.
       const { data: refundCat } = await supabase
@@ -211,7 +223,11 @@ export async function confirmImport(
         )
         billingOccurredAt = `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, '0')}-01`
       }
-      await repo.savePersonalBatch(normalizedPdfRows, 'credit_card', billingOccurredAt)
+      const pdfResult = await repo.savePersonalBatch(normalizedPdfRows, 'credit_card', billingOccurredAt)
+      pdfInserted = pdfResult.inserted
+      if (pdfResult.conflictMonth) {
+        conflictMonth = pdfResult.conflictMonth
+      }
     }
 
     if (sharedRows.length > 0) {
@@ -219,10 +235,20 @@ export async function confirmImport(
     }
   }
 
+  const imported = pdfInserted + sharedRows.length
+  const pdfSkipped = pdfRows.length - pdfInserted
+  const totalSkipped = skipped + (rows.length - included.length) + pdfSkipped
+
+  let conflictMessage: string | undefined
+  if (pdfSkipped > 0 && conflictMonth) {
+    const n = pdfSkipped
+    conflictMessage = `${n} transaç${n === 1 ? 'ão já estava importada' : 'ões já estavam importadas'} em ${formatMonthLabel(conflictMonth)} e não ${n === 1 ? 'foi movida' : 'foram movidas'}. Para movê-las, remova a fatura daquele mês primeiro.`
+  }
+
   revalidatePath('/dashboard/individual')
   revalidatePath('/dashboard/household')
   revalidatePath('/dashboard/import')
-  return { success: true, imported: toSave.length, skipped: skipped + (rows.length - included.length) }
+  return { success: true, imported, skipped: totalSkipped, conflictMessage }
 }
 
 export async function importFromConnectedAccount(accountId: string): Promise<ProcessResult> {

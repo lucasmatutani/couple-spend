@@ -63,18 +63,26 @@ export class SupabaseImportRepository implements TransactionRepository {
     transactions: ImportedTransaction[],
     paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other',
     billingOccurredAt: string,
-  ): Promise<void> {
-    if (transactions.length === 0) return
+  ): Promise<{ inserted: number; conflictMonth: string | null }> {
+    if (transactions.length === 0) return { inserted: 0, conflictMonth: null }
 
     const supabase = await createClient()
 
     const externalIds = transactions.map((t) => t.raw.externalId)
     const sourceId = transactions[0]!.sourceId
 
-    // Remove stale records from both tables so re-imports always use the correct billing month.
+    // Remove stale records only for THIS billing month.
+    // Scoping by occurred_at prevents silently deleting data from other months when the
+    // same PDF is accidentally imported for a different month tab.
     await Promise.all([
-      supabase.from('expenses').delete().eq('source_id', sourceId).in('external_id', externalIds),
-      supabase.from('personal_expenses').delete().eq('source_id', sourceId).in('external_id', externalIds),
+      supabase.from('expenses').delete()
+        .eq('source_id', sourceId)
+        .eq('occurred_at', billingOccurredAt)
+        .in('external_id', externalIds),
+      supabase.from('personal_expenses').delete()
+        .eq('source_id', sourceId)
+        .eq('occurred_at', billingOccurredAt)
+        .in('external_id', externalIds),
     ])
 
     const rows = transactions.map((t) => ({
@@ -90,11 +98,35 @@ export class SupabaseImportRepository implements TransactionRepository {
       payment_method: paymentMethod,
     }))
 
-    const { error } = await supabase.from('personal_expenses').upsert(rows as never, {
-      onConflict: 'owner_id,source_id,external_id',
-      ignoreDuplicates: true,
-    })
+    // .select('id') causes PostgreSQL to RETURNING id — with ignoreDuplicates: true
+    // (ON CONFLICT DO NOTHING), only actually-inserted rows are returned.
+    const { data, error } = await supabase
+      .from('personal_expenses')
+      .upsert(rows as never, {
+        onConflict: 'owner_id,source_id,external_id',
+        ignoreDuplicates: true,
+      })
+      .select('id')
 
     if (error) throw new Error(`Failed to save personal imported transactions: ${error.message}`)
+
+    const inserted = data?.length ?? 0
+
+    // If some rows were skipped, find which month already holds those transactions
+    // so the caller can show an informative message to the user.
+    let conflictMonth: string | null = null
+    if (inserted < transactions.length) {
+      const { data: existing } = await supabase
+        .from('personal_expenses')
+        .select('occurred_at')
+        .eq('source_id', sourceId)
+        .in('external_id', externalIds)
+        .neq('occurred_at', billingOccurredAt)
+        .limit(1)
+        .maybeSingle()
+      conflictMonth = existing?.occurred_at ?? null
+    }
+
+    return { inserted, conflictMonth }
   }
 }

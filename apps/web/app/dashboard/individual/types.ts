@@ -19,6 +19,7 @@ export type PersonalExpenseDto = {
   budgetBucket: 'needs' | 'wants' | 'savings'
   recurringPersonalExpenseId: string | null
   paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other' | null
+  splitParts: number
 }
 
 export type InvestmentDto = {

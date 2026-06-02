@@ -52,7 +52,7 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [rows, setRows] = useState<ReviewRow[]>([])
-  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; conflictMessage: string | undefined } | null>(null)
   const [planLimit, setPlanLimit] = useState(false)
   const [pdfCostWarningPending, setPdfCostWarningPending] = useState(false)
   const [isPdfImport, setIsPdfImport] = useState(false)
@@ -131,7 +131,7 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
 
     if (!result.success) { setError(result.error); return }
 
-    setImportResult({ imported: result.imported, skipped: result.skipped })
+    setImportResult({ imported: result.imported, skipped: result.skipped, conflictMessage: result.conflictMessage })
     setStep(4)
   }
 
@@ -438,9 +438,16 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
       <CheckCircle className="h-12 w-12 text-green-500" />
       <h2 className="text-xl font-semibold">Importação concluída</h2>
       {importResult && (
-        <p className="text-muted-foreground text-center">
-          {importResult.imported} transações importadas · {importResult.skipped} ignoradas (duplicatas ou excluídas)
-        </p>
+        <>
+          <p className="text-muted-foreground text-center">
+            {importResult.imported} transações importadas · {importResult.skipped} ignoradas (duplicatas ou excluídas)
+          </p>
+          {importResult.conflictMessage && (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-center max-w-md">
+              {importResult.conflictMessage}
+            </p>
+          )}
+        </>
       )}
       <Button onClick={() => router.push('/dashboard/household')}>
         Ver despesas da casa

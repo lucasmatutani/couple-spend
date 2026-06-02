@@ -63,7 +63,7 @@ export default async function IndividualPage({
       // Direct query to include recurring_personal_expense_id
       supabase
         .from('personal_expenses')
-        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method')
+        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method, split_parts')
         .eq('owner_id', user.id)
         .gte('occurred_at', start)
         .lte('occurred_at', end),
@@ -127,7 +127,6 @@ export default async function IndividualPage({
   const peRows = personalExpenseRows.data ?? []
   const personalExpenseDtos: PersonalExpenseDto[] = peRows.map((r) => {
     const cat = categoryMap.get(r.category_id)
-    const row = r as typeof r & { payment_method?: string | null }
     return {
       id: r.id,
       occurredAt: r.occurred_at,
@@ -138,7 +137,8 @@ export default async function IndividualPage({
       categoryName: cat?.name ?? 'Sem categoria',
       budgetBucket: cat?.budgetBucket ?? 'needs',
       recurringPersonalExpenseId: r.recurring_personal_expense_id,
-      paymentMethod: (row.payment_method ?? null) as PersonalExpenseDto['paymentMethod'],
+      paymentMethod: (r.payment_method ?? null) as PersonalExpenseDto['paymentMethod'],
+      splitParts: r.split_parts ?? 1,
     }
   })
 
@@ -215,7 +215,11 @@ export default async function IndividualPage({
         totalIncomeCents={budgetSummary.totalIncomeCents}
       />
 
-      <CreditCardExpensesCard expenses={personalExpenseDtos} currentMonth={month.toString()} />
+      <CreditCardExpensesCard
+        expenses={personalExpenseDtos}
+        categories={categoryDtos}
+        currentMonth={month.toString()}
+      />
 
       <CategoryBreakdown
         expenses={personalExpenseDtos}

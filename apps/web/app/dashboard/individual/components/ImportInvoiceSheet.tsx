@@ -67,7 +67,7 @@ export default function ImportInvoiceDialog({ currentMonth, trigger }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [rows, setRows] = useState<ReviewRow[]>([])
-  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; conflictMessage: string | undefined } | null>(null)
   const [pdfCostWarningPending, setPdfCostWarningPending] = useState(false)
 
   function reset() {
@@ -127,7 +127,7 @@ export default function ImportInvoiceDialog({ currentMonth, trigger }: Props) {
 
     if (!result.success) { setError(result.error); return }
 
-    setImportResult({ imported: result.imported, skipped: result.skipped })
+    setImportResult({ imported: result.imported, skipped: result.skipped, conflictMessage: result.conflictMessage })
     setStep(4)
     router.refresh()
   }
@@ -360,10 +360,17 @@ export default function ImportInvoiceDialog({ currentMonth, trigger }: Props) {
             <CheckCircle className="h-12 w-12 text-green-500" />
             <h2 className="text-xl font-semibold">Fatura importada!</h2>
             {importResult && (
-              <p className="text-muted-foreground text-center">
-                {importResult.imported} lançamentos importados
-                {importResult.skipped > 0 && ` · ${importResult.skipped} ignorados`}
-              </p>
+              <>
+                <p className="text-muted-foreground text-center">
+                  {importResult.imported} lançamentos importados
+                  {importResult.skipped > 0 && ` · ${importResult.skipped} ignorados`}
+                </p>
+                {importResult.conflictMessage && (
+                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-center max-w-sm">
+                    {importResult.conflictMessage}
+                  </p>
+                )}
+              </>
             )}
             <Button onClick={() => { reset(); setOpen(false) }}>Fechar</Button>
           </div>

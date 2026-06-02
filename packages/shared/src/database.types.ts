@@ -189,6 +189,8 @@ export type Database = {
           external_id: string
           imported_at: string
           recurring_personal_expense_id: string | null
+          payment_method: string | null
+          split_parts: number
         }
         Insert: {
           id?: string
@@ -201,6 +203,8 @@ export type Database = {
           external_id?: string
           imported_at?: string
           recurring_personal_expense_id?: string | null
+          payment_method?: string | null
+          split_parts?: number
         }
         Update: {
           id?: string
@@ -213,6 +217,8 @@ export type Database = {
           external_id?: string
           imported_at?: string
           recurring_personal_expense_id?: string | null
+          payment_method?: string | null
+          split_parts?: number
         }
         Relationships: []
       }

@@ -65,23 +65,44 @@ export async function batchCategorize(
     transactions.map((t) => ({ externalId: t.externalId, description: t.description })),
   )
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 4096,
-    system: `You are a financial transaction categorizer for Brazilian bank and credit card statements.
+  const CATEGORIZATION_SYSTEM_PROMPT = `
+You are a financial transaction categorizer for Brazilian bank and credit card statements.
 Assign the most appropriate category to each transaction based on its description.
 Return ONLY valid JSON, no markdown, no explanation:
 {"categorizations":[{"externalId":"...","categoryId":"uuid","confidence":0.0}]}
-Confidence guide: 0.9+=very sure, 0.7-0.9=fairly sure, 0.5-0.7=uncertain.
+
+Confidence guide: 0.9+ = very sure, 0.7–0.9 = fairly sure, 0.5–0.7 = uncertain.
 If no category fits well, use the "Outros" category with low confidence.
-Every externalId from the input must appear exactly once in the output.`,
+Every externalId from the input must appear exactly once in the output.
+
+USING BANK CATEGORIES:
+Some transactions include a "bankCategory" field — a category label assigned by the bank itself.
+When "bankCategory" is present and non-null, treat it as a strong signal and use the mapping below.
+Only override it if the description clearly contradicts it (e.g. bankCategory is "ALIMENTAÇÃO" but description is "NETFLIX").
+
+Bank category mapping:
+  ALIMENTAÇÃO          → prefer "Dining out" for restaurant names (IFD*, ZIG*, RAPPI*, etc), "Groceries" for supermarkets (MERCADO, EXTRA, CARREFOUR)
+  VEÍCULOS             → Transport
+  SAÚDE                → Health
+  VESTUÁRIO            → Clothing
+  TURISMO E ENTRETENIM → check description: streaming services → Subscriptions, bars/events → Entertainment
+  EDUCAÇÃO             → Education
+  DIVERSOS             → Other (use low confidence 0.5, do not force a specific category)
+
+When "bankCategory" is null (e.g. Nubank statements), categorize based on description alone using your knowledge of common Brazilian merchants.
+`;
+
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    system: CATEGORIZATION_SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
         content: `Available categories:\n${categoryList}\n\nTransactions to categorize:\n${transactionList}\n\nCategorize all transactions.`,
       },
     ],
-  })
+  });
 
   const textBlock = message.content.find((c): c is Anthropic.TextBlock => c.type === 'text')
   if (!textBlock) throw new Error('LLM categorizer returned no text content.')

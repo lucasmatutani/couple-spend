@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getIncomeRepository, getInvestmentRepository, getPersonalExpenseRepository } from '@/lib/container'
+import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import {
   Income,
   Investment,
@@ -267,6 +268,141 @@ export async function addInvestment(input: unknown): Promise<ActionResult> {
 
   await getInvestmentRepository().save(investment)
   revalidatePath('/dashboard/individual')
+  return { success: true }
+}
+
+// ---------------------------------------------------------------------------
+// Credit-card — delete all CC expenses for a given month
+// ---------------------------------------------------------------------------
+
+export async function deleteCreditCardMonth(monthParam: string): Promise<ActionResult> {
+  if (!/^\d{4}-\d{2}$/.test(monthParam)) return { success: false, error: 'Mês inválido' }
+
+  const [y, m] = monthParam.split('-') as [string, string]
+  const start = `${y}-${m.padStart(2, '0')}-01`
+  const lastDay = new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate()
+  const end = `${y}-${m.padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const { data: toDelete } = await supabase
+    .from('personal_expenses')
+    .select('id')
+    .eq('payment_method', 'credit_card')
+    .gte('occurred_at', start)
+    .lte('occurred_at', end)
+
+  const ids = (toDelete ?? []).map((r) => r.id)
+
+  if (ids.length > 0) {
+    const householdRepo = new SupabaseHouseholdRepository()
+    const household = await householdRepo.findFirstByMember(toUserId(user.id))
+    if (household) {
+      await supabase
+        .from('expenses')
+        .delete()
+        .eq('household_id', household.id)
+        .eq('source_id', 'cc-split')
+        .in('external_id', ids)
+    }
+
+    await supabase
+      .from('personal_expenses')
+      .delete()
+      .eq('payment_method', 'credit_card')
+      .gte('occurred_at', start)
+      .lte('occurred_at', end)
+  }
+
+  revalidatePath('/dashboard/individual')
+  revalidatePath('/dashboard/household')
+  return { success: true }
+}
+
+// ---------------------------------------------------------------------------
+// Credit-card expense — edit category / amount / split
+// ---------------------------------------------------------------------------
+
+const updateCCExpenseSchema = z.object({
+  id: z.string().min(1),
+  categoryId: z.string().min(1),
+  amountCents: z.number().int().positive(),
+  splitParts: z.number().int().min(1).max(10),
+  occurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+export async function updateCreditCardExpense(input: unknown): Promise<ActionResult> {
+  const parsed = updateCCExpenseSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Não autorizado' }
+
+  const { id, categoryId, amountCents, splitParts, occurredAt } = parsed.data
+
+  const { error: updateErr } = await supabase
+    .from('personal_expenses')
+    .update({ category_id: categoryId, amount_cents: amountCents, split_parts: splitParts })
+    .eq('id', id)
+    .eq('owner_id', user.id)
+  if (updateErr) return { success: false, error: 'Erro ao atualizar despesa' }
+
+  // Sync the household share —————————————————————————————————————————————
+  const SOURCE_SPLIT = 'cc-split'
+
+  if (splitParts > 1) {
+    // Each part = user's share = partner's share = amountCents / splitParts.
+    // The partner's portion is recorded as ONLY_OTHER so it appears in
+    // the household settlement as "partner owes payer this amount".
+    const partCents = Math.round(amountCents / splitParts)
+
+    const householdRepo = new SupabaseHouseholdRepository()
+    const household = await householdRepo.findFirstByMember(toUserId(user.id))
+    if (!household) return { success: false, error: 'Household não encontrado' }
+
+    const { data: defaultCat } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', 'Outros')
+      .is('household_id', null)
+      .single()
+
+    await supabase.from('expenses').upsert(
+      {
+        id: crypto.randomUUID(),
+        household_id: household.id,
+        paid_by: user.id,
+        category_id: categoryId ?? defaultCat?.id,
+        occurred_at: occurredAt,
+        amount_cents: partCents,
+        description: null,
+        split_rule_type: 'ONLY_OTHER' as const,
+        split_rule_payer_percent: null,
+        source_id: SOURCE_SPLIT,
+        external_id: id,
+        imported_at: new Date().toISOString(),
+      },
+      { onConflict: 'household_id,source_id,external_id' },
+    )
+  } else {
+    // split_parts reverted to 1 — remove any linked household expense
+    const householdRepo = new SupabaseHouseholdRepository()
+    const household = await householdRepo.findFirstByMember(toUserId(user.id))
+    if (household) {
+      await supabase
+        .from('expenses')
+        .delete()
+        .eq('household_id', household.id)
+        .eq('source_id', SOURCE_SPLIT)
+        .eq('external_id', id)
+    }
+  }
+
+  revalidatePath('/dashboard/individual')
+  revalidatePath('/dashboard/household')
   return { success: true }
 }
 
