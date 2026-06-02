@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { Home, Settings, Upload, User } from 'lucide-react'
+import { Home, Settings, LayoutDashboard, User } from 'lucide-react'
 
 const NAV_ITEMS = [
+  { href: '/dashboard/overview', label: 'Dashboard', Icon: LayoutDashboard, preserveMonth: true },
   { href: '/dashboard/household', label: 'Casa', Icon: Home, preserveMonth: true },
   { href: '/dashboard/individual', label: 'Individual', Icon: User, preserveMonth: true },
-  { href: '/dashboard/import', label: 'Importar', Icon: Upload, preserveMonth: false },
   { href: '/dashboard/settings', label: 'Config.', Icon: Settings, preserveMonth: false },
 ]
 
