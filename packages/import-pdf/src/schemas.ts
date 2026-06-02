@@ -13,6 +13,8 @@ export const ExtractionResultSchema = z.object({
       amountCents: z.number().int().positive(),
       type: z.enum(['expense', 'income']),
       installment: z.object({ current: z.number(), total: z.number() }).nullable(),
+      categoryId: z.string().optional(),
+      confidence: z.number().min(0).max(1).optional(),
     }),
   ),
   warnings: z.array(z.string()),

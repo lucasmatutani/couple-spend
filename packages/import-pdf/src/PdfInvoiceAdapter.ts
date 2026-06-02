@@ -6,7 +6,7 @@ import type {
   FetchResult,
   RawTransaction,
 } from '@splitwise/import-core'
-import { EXTRACTION_SYSTEM_PROMPT } from './prompt'
+import { buildUnifiedPrompt, type CategoryDef } from './prompt'
 import { ExtractionResultSchema } from './schemas'
 
 export class PdfExtractionError extends Error {
@@ -24,6 +24,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
     private readonly pdfBuffer: Buffer,
     private readonly client: Anthropic,
     private readonly institutionHint?: string,
+    private readonly categories: CategoryDef[] = [],
   ) {}
 
   async fetch(_params: FetchParams): Promise<FetchResult> {
@@ -33,7 +34,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
       system: [
         {
           type: 'text',
-          text: EXTRACTION_SYSTEM_PROMPT,
+          text: buildUnifiedPrompt(this.categories),
           cache_control: { type: 'ephemeral' },
         },
       ],
@@ -116,6 +117,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
             installment: t.installment,
             inputTokens: message.usage.input_tokens,
             outputTokens: message.usage.output_tokens,
+            ...(t.categoryId ? { suggestedCategoryId: t.categoryId, categoryConfidence: t.confidence ?? 0 } : {}),
           },
         }
       }),

@@ -82,9 +82,15 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
     mapping === 'itau' ? ITAU_MAPPING :
     ITAU_MAPPING
 
+  // PDF: fetch categories upfront so the unified prompt can extract + categorize in one call.
+  const allCategories = ext === 'pdf'
+    ? await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
+    : []
+  const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
+
   const source =
     ext === 'pdf'
-      ? getPdfSource(buffer)
+      ? getPdfSource(buffer, categoryDefs)
       : ext === 'ofx'
         ? new OfxFileAdapter(buffer)
         : new CsvFileAdapter(buffer, columnMapping, 'Importado')
@@ -94,16 +100,27 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
 
     let transactions = summary.importedTransactions
 
-    // LLM post-processing: batch-categorize transactions the chain couldn't resolve
-    if (process.env.ENABLE_LLM_CATEGORIZATION === 'true') {
+    if (ext === 'pdf') {
+      // Apply category suggestions embedded in metadata by the unified prompt.
+      transactions = transactions.map((t) => {
+        if (t.categorySource !== 'default') return t
+        const suggestedId = t.raw.metadata?.['suggestedCategoryId'] as string | undefined
+        const confidence = t.raw.metadata?.['categoryConfidence'] as number | undefined
+        if (suggestedId && typeof confidence === 'number' && confidence >= 0.5) {
+          return { ...t, categoryId: suggestedId, categoryConfidence: confidence, categorySource: 'llm' as const }
+        }
+        return t
+      })
+    } else if (process.env.ENABLE_LLM_CATEGORIZATION === 'true') {
+      // OFX / CSV: batch-categorize via separate Haiku call.
       const uncategorized = transactions.filter((t) => t.categorySource === 'default')
       if (uncategorized.length > 0) {
         try {
-          const allCategories = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
-          const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
+          const cats = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
+          const catDefs = cats.map((c) => ({ id: c.id as string, name: c.name }))
           const llmMap = await batchCategorize(
             uncategorized.map((t) => ({ externalId: t.raw.externalId, description: t.raw.description })),
-            categoryDefs,
+            catDefs,
             getAnthropicClient(),
           )
           transactions = transactions.map((t) => {
@@ -114,7 +131,6 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
             return t
           })
         } catch (err) {
-          // LLM failure is non-fatal — chain results are still usable
           console.warn('[LLM Categorization] Failed, using chain results:', err)
         }
       }

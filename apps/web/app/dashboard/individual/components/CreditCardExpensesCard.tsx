@@ -79,9 +79,19 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showChart, setShowChart] = useState(false)
+  const [filterCategoryId, setFilterCategoryId] = useState<string | null>(null)
 
   const ccExpenses = expenses.filter((e) => e.paymentMethod === 'credit_card')
   const totalCents = ccExpenses.reduce((sum, e) => sum + effectiveCents(e), 0)
+
+  const categoryOptions = Array.from(
+    new Map(ccExpenses.map((e) => [e.categoryId, e.categoryName])).entries(),
+  ).sort((a, b) => a[1].localeCompare(b[1]))
+
+  const visibleExpenses = filterCategoryId
+    ? ccExpenses.filter((e) => e.categoryId === filterCategoryId)
+    : ccExpenses
+  const filteredTotal = visibleExpenses.reduce((sum, e) => sum + effectiveCents(e), 0)
 
   function startEdit(e: PersonalExpenseDto) {
     setEditingId(e.id)
@@ -224,8 +234,27 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
             Nenhuma despesa de cartão de crédito neste período.
           </p>
         ) : (
+          <div className="space-y-3">
+            {categoryOptions.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {categoryOptions.map(([id, name]) => (
+                  <button
+                    key={id}
+                    onClick={() => setFilterCategoryId(filterCategoryId === id ? null : id)}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                      filterCategoryId === id
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                    }`}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+
           <div className="space-y-1">
-            {ccExpenses.map((expense) => {
+            {visibleExpenses.map((expense) => {
               const isRefund = expense.categoryName === 'Reembolsos'
               const isReimbursed = expense.reimbursed
               const isPartnerSplit = expense.splitWithPartner
@@ -393,12 +422,25 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
             {/* Footer total */}
             <div className="border-t pt-2 mt-2 flex items-center justify-between text-sm font-medium">
               <span className="text-muted-foreground">
-                {ccExpenses.length} lançamento{ccExpenses.length !== 1 ? 's' : ''}
+                {visibleExpenses.length} lançamento{visibleExpenses.length !== 1 ? 's' : ''}
+                {filterCategoryId && (
+                  <span className="ml-1 text-xs font-normal">
+                    de {ccExpenses.length} total
+                  </span>
+                )}
               </span>
-              <span className={totalCents < 0 ? 'text-green-600' : ''}>
-                {totalCents < 0 ? '-' : ''}{fmt(totalCents)}
-              </span>
+              <div className="flex items-center gap-2">
+                {filterCategoryId && totalCents !== filteredTotal && (
+                  <span className="text-xs text-muted-foreground font-normal line-through">
+                    {fmt(totalCents)}
+                  </span>
+                )}
+                <span className={filteredTotal < 0 ? 'text-green-600' : ''}>
+                  {filteredTotal < 0 ? '-' : ''}{fmt(filteredTotal)}
+                </span>
+              </div>
             </div>
+          </div>
           </div>
         )}
       </CardContent>
