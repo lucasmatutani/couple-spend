@@ -330,6 +330,8 @@ const updateCCExpenseSchema = z.object({
   categoryId: z.string().min(1),
   amountCents: z.number().int().positive(),
   splitParts: z.number().int().min(1).max(10),
+  reimbursed: z.boolean().default(false),
+  description: z.string().nullable().optional(),
   occurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 })
 
@@ -341,11 +343,11 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Não autorizado' }
 
-  const { id, categoryId, amountCents, splitParts, occurredAt } = parsed.data
+  const { id, categoryId, amountCents, splitParts, reimbursed, description, occurredAt } = parsed.data
 
   const { error: updateErr } = await supabase
     .from('personal_expenses')
-    .update({ category_id: categoryId, amount_cents: amountCents, split_parts: splitParts })
+    .update({ category_id: categoryId, amount_cents: amountCents, split_parts: splitParts, reimbursed } as never)
     .eq('id', id)
     .eq('owner_id', user.id)
   if (updateErr) return { success: false, error: 'Erro ao atualizar despesa' }
@@ -353,7 +355,9 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
   // Sync the household share —————————————————————————————————————————————
   const SOURCE_SPLIT = 'cc-split'
 
-  if (splitParts > 1) {
+  const needsHouseholdSplit = !reimbursed && splitParts > 1
+
+  if (needsHouseholdSplit) {
     // Each part = user's share = partner's share = amountCents / splitParts.
     // The partner's portion is recorded as ONLY_OTHER so it appears in
     // the household settlement as "partner owes payer this amount".
@@ -378,7 +382,7 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
         category_id: categoryId ?? defaultCat?.id,
         occurred_at: occurredAt,
         amount_cents: partCents,
-        description: null,
+        description: description ?? null,
         split_rule_type: 'ONLY_OTHER' as const,
         split_rule_payer_percent: null,
         source_id: SOURCE_SPLIT,
@@ -388,7 +392,7 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
       { onConflict: 'household_id,source_id,external_id' },
     )
   } else {
-    // split_parts reverted to 1 — remove any linked household expense
+    // split_parts reverted to 1, or expense is reimbursed — remove any linked household expense
     const householdRepo = new SupabaseHouseholdRepository()
     const household = await householdRepo.findFirstByMember(toUserId(user.id))
     if (household) {

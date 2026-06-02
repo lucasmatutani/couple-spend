@@ -20,6 +20,7 @@ export type PersonalExpenseDto = {
   recurringPersonalExpenseId: string | null
   paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other' | null
   splitParts: number
+  reimbursed: boolean
 }
 
 export type InvestmentDto = {

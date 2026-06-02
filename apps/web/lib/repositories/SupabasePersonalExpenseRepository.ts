@@ -40,6 +40,7 @@ export class SupabasePersonalExpenseRepository implements PersonalExpenseReposit
         importedAt: new Date(row.imported_at),
         paymentMethod: (row as Record<string, unknown>)['payment_method'] as PaymentMethod | null ?? null,
         splitParts: (row as Record<string, unknown>)['split_parts'] as number ?? 1,
+        reimbursed: (row as Record<string, unknown>)['reimbursed'] as boolean ?? false,
       }),
     )
   }
@@ -57,6 +58,7 @@ export class SupabasePersonalExpenseRepository implements PersonalExpenseReposit
       source_id: expense.sourceId,
       external_id: expense.externalId,
       payment_method: expense.paymentMethod,
+      reimbursed: expense.reimbursed,
     } as never)
     if (error) throw new Error(`Failed to save personal expense: ${error.message}`)
   }

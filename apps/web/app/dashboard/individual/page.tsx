@@ -63,7 +63,7 @@ export default async function IndividualPage({
       // Direct query to include recurring_personal_expense_id
       supabase
         .from('personal_expenses')
-        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method, split_parts')
+        .select('id, occurred_at, amount_cents, description, category_id, recurring_personal_expense_id, payment_method, split_parts, reimbursed')
         .eq('owner_id', user.id)
         .gte('occurred_at', start)
         .lte('occurred_at', end),
@@ -139,6 +139,7 @@ export default async function IndividualPage({
       recurringPersonalExpenseId: r.recurring_personal_expense_id,
       paymentMethod: (r.payment_method ?? null) as PersonalExpenseDto['paymentMethod'],
       splitParts: r.split_parts ?? 1,
+      reimbursed: (r as Record<string, unknown>)['reimbursed'] as boolean ?? false,
     }
   })
 

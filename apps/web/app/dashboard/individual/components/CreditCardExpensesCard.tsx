@@ -30,6 +30,7 @@ const SPLIT_OPTIONS = [
   { value: '3', label: '÷ 3 pessoas' },
   { value: '4', label: '÷ 4 pessoas' },
   { value: '5', label: '÷ 5 pessoas' },
+  { value: 'reimbursed', label: 'Reembolso total' },
 ]
 
 function fmt(cents: number): string {
@@ -45,6 +46,7 @@ function parseBrl(s: string): number {
 }
 
 function effectiveCents(e: PersonalExpenseDto): number {
+  if (e.reimbursed) return 0
   const isRefund = e.categoryName === 'Reembolsos'
   if (isRefund) return -e.amountCents
   return Math.round(e.amountCents / e.splitParts)
@@ -59,6 +61,7 @@ type Props = {
 type EditState = {
   categoryId: string
   amountBrl: string
+  /** '1'..'10' or 'reimbursed' */
   splitParts: string
   saving: boolean
   error: string | null
@@ -79,7 +82,7 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
     setEditState({
       categoryId: e.categoryId,
       amountBrl: centsToBrl(e.amountCents),
-      splitParts: String(e.splitParts),
+      splitParts: e.reimbursed ? 'reimbursed' : String(e.splitParts),
       saving: false,
       error: null,
     })
@@ -97,12 +100,15 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
       setEditState((s) => s && ({ ...s, error: 'Valor inválido' }))
       return
     }
+    const isReimbursed = editState.splitParts === 'reimbursed'
     setEditState((s) => s && ({ ...s, saving: true, error: null }))
     const result = await updateCreditCardExpense({
       id: e.id,
       categoryId: editState.categoryId,
       amountCents,
-      splitParts: parseInt(editState.splitParts, 10),
+      splitParts: isReimbursed ? 1 : parseInt(editState.splitParts, 10),
+      reimbursed: isReimbursed,
+      description: e.description,
       occurredAt: e.occurredAt,
     })
     if (!result.success) {
@@ -195,7 +201,8 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
           <div className="space-y-1">
             {ccExpenses.map((expense) => {
               const isRefund = expense.categoryName === 'Reembolsos'
-              const isSplit = expense.splitParts > 1
+              const isReimbursed = expense.reimbursed
+              const isSplit = !isReimbursed && expense.splitParts > 1
               const effective = effectiveCents(expense)
               const isEditing = editingId === expense.id
 
@@ -305,16 +312,25 @@ export default function CreditCardExpensesCard({ expenses, categories, currentMo
                     {expense.categoryName}
                   </Badge>
 
-                  {/* Split badge */}
-                  {isSplit && (
+                  {/* Split / reimbursed badge */}
+                  {isReimbursed ? (
+                    <Badge variant="outline" className="text-xs shrink-0 text-orange-600 border-orange-200">
+                      Reembolso
+                    </Badge>
+                  ) : isSplit ? (
                     <Badge variant="outline" className="text-xs shrink-0 text-blue-600 border-blue-200">
                       ÷{expense.splitParts}
                     </Badge>
-                  )}
+                  ) : null}
 
                   {/* Amount column */}
                   <div className="text-right shrink-0">
-                    {isSplit ? (
+                    {isReimbursed ? (
+                      <>
+                        <p className="text-sm font-medium text-muted-foreground">R$ 0,00</p>
+                        <p className="text-xs text-muted-foreground line-through">{fmt(expense.amountCents)}</p>
+                      </>
+                    ) : isSplit ? (
                       <>
                         <p className={`text-sm font-medium ${isRefund ? 'text-green-600' : ''}`}>
                           {isRefund ? '-' : ''}{fmt(effective)}

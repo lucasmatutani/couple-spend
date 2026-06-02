@@ -20,10 +20,13 @@ export class PersonalExpense {
     readonly importedAt: Date,
     readonly paymentMethod: PaymentMethod | null,
     readonly splitParts: number,
+    /** True when the expense will be fully reimbursed by a third party — costs R$0 to payer and partner. */
+    readonly reimbursed: boolean,
   ) {}
 
-  /** The user's effective cost after applying the split. */
+  /** The user's effective cost: R$0 if reimbursed, otherwise amount / splitParts. */
   get effectiveAmount(): Money {
+    if (this.reimbursed) return Money.of(0)
     return Money.of(Math.round(this.amount.cents / this.splitParts))
   }
 
@@ -39,6 +42,7 @@ export class PersonalExpense {
     importedAt?: Date
     paymentMethod?: PaymentMethod | null
     splitParts?: number
+    reimbursed?: boolean
   }): PersonalExpense {
     return new PersonalExpense(
       data.id,
@@ -52,6 +56,7 @@ export class PersonalExpense {
       data.importedAt ?? new Date(),
       data.paymentMethod ?? null,
       data.splitParts ?? 1,
+      data.reimbursed ?? false,
     )
   }
 }
