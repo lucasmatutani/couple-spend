@@ -11,7 +11,7 @@ import { checkCanImportMonth, PlanLimitError } from '@/lib/plan-guard'
 import { OfxFileAdapter } from '@splitwise/import-ofx'
 import { CsvFileAdapter, ITAU_MAPPING, PICPAY_MAPPING } from '@splitwise/import-csv'
 import type { CsvColumnMapping } from '@splitwise/import-csv'
-import { PdfExtractionError } from '@splitwise/import-pdf'
+import { PdfExtractionError, GeminiPdfExtractionError } from '@splitwise/import-pdf'
 import { getOpenFinanceSource, getPdfSource } from '@/lib/import-sources'
 import { buildCategoryResolver } from '@/lib/resolvers'
 import { batchCategorize } from '@/lib/llm-categorizer'
@@ -143,7 +143,7 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
     }
     return { success: true, preview }
   } catch (e) {
-    if (e instanceof PdfExtractionError) return { success: false, error: e.message }
+    if (e instanceof PdfExtractionError || e instanceof GeminiPdfExtractionError) return { success: false, error: e.message }
     return { success: false, error: e instanceof Error ? e.message : 'Erro ao processar arquivo' }
   }
 }
