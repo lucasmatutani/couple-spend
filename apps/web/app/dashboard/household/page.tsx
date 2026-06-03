@@ -45,7 +45,7 @@ export default async function HouseholdPage({
     getHouseholdSplitUseCase().execute(householdId, month),
     supabase
       .from('expenses')
-      .select('id, occurred_at, description, amount_cents, split_rule_type, split_rule_payer_percent, paid_by, category_id, household_id, recurring_expense_id')
+      .select('id, occurred_at, description, amount_cents, split_rule_type, split_rule_payer_percent, paid_by, category_id, household_id, recurring_expense_id, is_recurring')
       .eq('household_id', household.id)
       .gte('occurred_at', start)
       .lte('occurred_at', end)
@@ -123,7 +123,7 @@ export default async function HouseholdPage({
   }))
 
   const recurringTotalCents = rows
-    .filter((r) => r.recurring_expense_id !== null)
+    .filter((r) => r.is_recurring)
     .reduce((sum, r) => sum + r.amount_cents, 0)
 
   const recurringTotalFormatted = `R$ ${(recurringTotalCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -166,7 +166,7 @@ export default async function HouseholdPage({
           <CardContent>
             <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {rows.filter((r) => r.recurring_expense_id !== null).length} despesa(s) recorrente(s)
+              {rows.filter((r) => r.is_recurring).length} despesa(s) recorrente(s)
             </p>
           </CardContent>
         </Card>

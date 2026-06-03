@@ -24,6 +24,7 @@ const addSchema = z.object({
   splitRuleType: z.enum(['EQUAL', 'ONLY_PAYER', 'ONLY_OTHER', 'CUSTOM']),
   splitRulePayerPercent: z.number().min(0).max(100).nullable(),
   installmentCount: z.number().int().min(1).nullable(),
+  startMonth: z.string().regex(/^\d{4}-\d{2}$/),
 })
 
 function buildSplitRule(type: string, payerPercent: number | null): SplitRule {
@@ -35,21 +36,25 @@ function buildSplitRule(type: string, payerPercent: number | null): SplitRule {
   }
 }
 
-// Returns the months to generate entries for.
-// installmentCount=null → current month through December of current year
-// installmentCount=n    → exactly n months starting from current month
-function monthsToGenerate(installmentCount: number | null): { year: number; month: number }[] {
-  const now = new Date()
+// Returns the months to generate entries for, starting from startMonth.
+// installmentCount=null → startMonth through December of startMonth's year
+// installmentCount=n    → exactly n months starting from startMonth
+function monthsToGenerate(
+  installmentCount: number | null,
+  startMonth: string, // "YYYY-MM"
+): { year: number; month: number }[] {
+  const [yearStr, monthStr] = startMonth.split('-')
+  const startYear = parseInt(yearStr!, 10)
+  const startMonthNum = parseInt(monthStr!, 10) // 1-indexed
   const result = []
   if (installmentCount !== null) {
     for (let i = 0; i < installmentCount; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      const d = new Date(startYear, startMonthNum - 1 + i, 1)
       result.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
     }
   } else {
-    const currentYear = now.getFullYear()
-    for (let m = now.getMonth(); m <= 11; m++) {
-      result.push({ year: currentYear, month: m + 1 })
+    for (let m = startMonthNum; m <= 12; m++) {
+      result.push({ year: startYear, month: m })
     }
   }
   return result
@@ -87,7 +92,7 @@ export async function addRecurringExpense(input: unknown): Promise<ActionResult>
   const splitRule = buildSplitRule(d.splitRuleType, d.splitRulePayerPercent)
   const repo = new SupabaseExpenseRepository()
 
-  for (const { year, month } of monthsToGenerate(d.installmentCount ?? null)) {
+  for (const { year, month } of monthsToGenerate(d.installmentCount ?? null, d.startMonth)) {
     const mm = String(month).padStart(2, '0')
     const occurredAt = new Date(`${year}-${mm}-01T12:00:00`)
     const expense = Expense.create({
@@ -105,10 +110,10 @@ export async function addRecurringExpense(input: unknown): Promise<ActionResult>
     })
     await repo.save(expense)
 
-    // Link the generated entry back to the template
+    // Link the generated entry back to the template and mark as recurring
     await supabase
       .from('expenses')
-      .update({ recurring_expense_id: template.id })
+      .update({ recurring_expense_id: template.id, is_recurring: true })
       .eq('household_id', d.householdId)
       .eq('source_id', 'recurring')
       .eq('external_id', `${template.id}-${year}-${mm}`)
@@ -192,6 +197,7 @@ export async function updateRecurringExpenseSingleMonth(input: unknown): Promise
       split_rule_type: d.splitRuleType,
       split_rule_payer_percent: d.splitRulePayerPercent ?? null,
       recurring_expense_id: null,
+      is_recurring: true,
     })
     .eq('recurring_expense_id', d.templateId)
     .eq('occurred_at', occurredAt)
@@ -304,10 +310,11 @@ export async function updateExpenseSingle(input: unknown): Promise<ActionResult>
 
   await new SupabaseExpenseRepository().save(expense)
 
-  // Decouple from recurring series so future bulk edits won't affect this entry
+  // Decouple from recurring series so future bulk edits won't affect this entry,
+  // but preserve is_recurring so the monthly total stays correct.
   await supabase
     .from('expenses')
-    .update({ recurring_expense_id: null })
+    .update({ recurring_expense_id: null, is_recurring: true })
     .eq('id', d.id)
 
   revalidatePath('/dashboard/household')

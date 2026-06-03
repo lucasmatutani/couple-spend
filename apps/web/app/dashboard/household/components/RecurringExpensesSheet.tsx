@@ -144,6 +144,7 @@ export default function RecurringExpensesSheet({
       splitRuleType: f.splitType as 'EQUAL' | 'ONLY_PAYER' | 'ONLY_OTHER' | 'CUSTOM',
       splitRulePayerPercent: f.splitType === 'CUSTOM' ? parseFloat(f.payerPercent) : null,
       installmentCount: parsedInstallments,
+      startMonth: currentMonth,
     })
     setFormLoading(false)
     if (result.success) {

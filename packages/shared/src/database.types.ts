@@ -140,6 +140,7 @@ export type Database = {
           external_id: string
           imported_at: string
           recurring_expense_id: string | null
+          is_recurring: boolean
         }
         Insert: {
           id?: string
@@ -155,6 +156,7 @@ export type Database = {
           external_id?: string
           imported_at?: string
           recurring_expense_id?: string | null
+          is_recurring?: boolean
         }
         Update: {
           id?: string
@@ -170,6 +172,7 @@ export type Database = {
           external_id?: string
           imported_at?: string
           recurring_expense_id?: string | null
+          is_recurring?: boolean
         }
         Relationships: [
           { foreignKeyName: 'expenses_household_id_fkey'; columns: ['household_id']; referencedRelation: 'households'; referencedColumns: ['id'] },
