@@ -10,6 +10,8 @@ import { deleteIncome, deleteIncomeFuture } from '../actions'
 import AddIncomeSheet from './AddIncomeSheet'
 import EditIncomeSheet from './EditIncomeSheet'
 import type { IncomeDto } from '../types'
+import { Money } from '@/components/ui/money'
+import { StaggerList, StaggerItem } from '@/components/ui/animated'
 
 type Props = {
   incomes: IncomeDto[]
@@ -80,15 +82,13 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents, currentMo
         />
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-3xl font-bold text-green-600">
-          {`R$ ${(totalIncomeCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-        </p>
+        <Money cents={totalIncomeCents} size="lg" colorize className="block text-3xl" />
         {incomes.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma receita registrada neste mês.</p>
         ) : (
-          <ul className="space-y-2">
+          <StaggerList className="space-y-2">
             {incomes.map((income) => (
-              <li key={income.id} className="flex items-center justify-between text-sm">
+              <StaggerItem key={income.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="truncate">{income.source}</span>
                   {income.recurringIncomeId && (
@@ -99,7 +99,7 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents, currentMo
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0 ml-2">
-                  <span className="font-medium text-green-600 mr-1">{income.amountFormatted}</span>
+                  <Money cents={income.amountCents} size="sm" colorize className="mr-1 !text-sm font-medium" />
                   <Button
                     size="icon"
                     variant="ghost"
@@ -118,9 +118,9 @@ export default function IncomeSummaryCard({ incomes, totalIncomeCents, currentMo
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
-              </li>
+              </StaggerItem>
             ))}
-          </ul>
+          </StaggerList>
         )}
       </CardContent>
 

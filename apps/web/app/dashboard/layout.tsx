@@ -5,6 +5,7 @@ import { toUserId } from '@splitwise/domain'
 import LogoutButton from './components/LogoutButton'
 import MonthNavigator from './components/MonthNavigator'
 import NavLinks from './components/NavLinks'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -33,8 +34,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <header className="flex items-center justify-between border-b bg-card px-4 py-3">
           <span className="truncate text-sm font-medium md:hidden">{household.name}</span>
           <MonthNavigator />
-          <div className="hidden md:block">
-            <LogoutButton />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <div className="hidden md:block">
+              <LogoutButton />
+            </div>
           </div>
         </header>
 

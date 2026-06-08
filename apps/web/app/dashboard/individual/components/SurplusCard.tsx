@@ -2,6 +2,7 @@
 
 import { TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Money } from '@/components/ui/money'
 import type { BudgetSummaryDto } from '../types'
 
 type Props = { summary: BudgetSummaryDto }
@@ -9,13 +10,7 @@ type Props = { summary: BudgetSummaryDto }
 export default function SurplusCard({ summary }: Props) {
   const { surplusFormatted, surplusCents, avgSurplus3mFormatted, avgSurplus3mCents } = summary
 
-  const yearProjection = Math.round(avgSurplus3mCents * 12)
-  const yearFormatted = `R$ ${(yearProjection / 100).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
-
-  const isPositive = surplusCents >= 0
+  const yearProjectionCents = Math.round(avgSurplus3mCents * 12)
 
   return (
     <Card>
@@ -24,17 +19,15 @@ export default function SurplusCard({ summary }: Props) {
         <TrendingUp className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className={`text-3xl font-bold ${isPositive ? 'text-green-600' : 'text-destructive'}`}>
-          {surplusFormatted}
-        </p>
+        <Money cents={surplusCents} size="lg" colorize className="block text-3xl" />
         <div className="space-y-1 text-sm text-muted-foreground">
           <div className="flex justify-between">
             <span>Média 3 meses</span>
-            <span className="font-medium text-foreground">{avgSurplus3mFormatted}</span>
+            <Money cents={avgSurplus3mCents} size="sm" colorize className="font-medium !text-foreground" />
           </div>
           <div className="flex justify-between">
             <span>Projeção anual</span>
-            <span className="font-medium text-foreground">{yearFormatted}</span>
+            <Money cents={yearProjectionCents} size="sm" colorize className="font-medium !text-foreground" />
           </div>
         </div>
       </CardContent>

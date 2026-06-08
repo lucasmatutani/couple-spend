@@ -12,9 +12,9 @@ import {
 import { Money, YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
 import { Repeat } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageTransition } from '@/components/ui/animated'
 import type { BudgetSummaryDto, CategoryDto, IncomeDto, InvestmentDto, PersonalExpenseDto, RecurringPersonalExpenseDto } from './types'
 import IncomeSummaryCard from './components/IncomeSummaryCard'
-import BudgetBreakdownBar from './components/BudgetBreakdownBar'
 import CategoryBreakdown from './components/CategoryBreakdown'
 import RecurringPersonalExpensesSheet from './components/RecurringPersonalExpensesSheet'
 import SurplusCard from './components/SurplusCard'
@@ -180,9 +180,10 @@ export default async function IndividualPage({
     .filter((r) => r.recurring_personal_expense_id !== null)
     .reduce((sum, r) => sum + r.amount_cents, 0)
 
-  const recurringTotalFormatted = `R$ ${(recurringTotalCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+const recurringTotalFormatted = `R$ ${(recurringTotalCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Orçamento individual</h2>
@@ -193,42 +194,34 @@ export default async function IndividualPage({
         />
       </div>
 
-      <BudgetBreakdownBar summary={budgetSummary} />
-
       <div className="grid gap-4 md:grid-cols-2">
         <SurplusCard summary={budgetSummary} />
-        <InvestmentSummaryCard investments={investmentDtos} summary={budgetSummary} currentMonth={month.toString()} />
+        {recurringTotalCents > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Repeat className="h-4 w-4" />
+                Despesas fixas no mês
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {peRows.filter((r) => r.recurring_personal_expense_id !== null).length} despesa(s) recorrente(s)
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <IncomeSummaryCard incomes={incomeDtos} totalIncomeCents={budgetSummary.totalIncomeCents} currentMonth={month.toString()} />
-
-      {recurringTotalCents > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Repeat className="h-4 w-4" />
-              Despesas fixas no mês
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {peRows.filter((r) => r.recurring_personal_expense_id !== null).length} despesa(s) recorrente(s)
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid gap-4 md:grid-cols-2">
+        <IncomeSummaryCard incomes={incomeDtos} totalIncomeCents={budgetSummary.totalIncomeCents} currentMonth={month.toString()} />
+        <InvestmentSummaryCard investments={investmentDtos} summary={budgetSummary} currentMonth={month.toString()} />
+      </div>
 
       <GoalStatusBanner
         evaluations={goalEvaluations}
         totalIncomeCents={budgetSummary.totalIncomeCents}
-      />
-
-      <CreditCardExpensesCard
-        expenses={personalExpenseDtos}
-        categories={categoryDtos}
-        currentMonth={month.toString()}
-        otherMemberName={otherMemberName}
       />
 
       <CategoryBreakdown
@@ -237,6 +230,14 @@ export default async function IndividualPage({
         totalIncomeCents={budgetSummary.totalIncomeCents}
         currentMonth={month.toString()}
       />
+
+      <CreditCardExpensesCard
+        expenses={personalExpenseDtos}
+        categories={categoryDtos}
+        currentMonth={month.toString()}
+        otherMemberName={otherMemberName}
+      />
     </div>
+    </PageTransition>
   )
 }

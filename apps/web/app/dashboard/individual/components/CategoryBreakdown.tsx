@@ -76,14 +76,18 @@ export default function CategoryBreakdown({ expenses, categories, totalIncomeCen
     expenses: PersonalExpenseDto[]
   }
 
-  // Credit card expenses are collapsed into a single "Cartão de crédito" line (net of refunds).
+  // Mirrors the effectiveCents logic from CreditCardExpensesCard.
+  function effectiveCents(e: PersonalExpenseDto): number {
+    if (e.reimbursed) return 0
+    if (e.categoryName === 'Reembolsos') return -e.amountCents
+    return Math.round(e.amountCents / e.splitParts)
+  }
+
+  // Credit card expenses are collapsed into a single "Cartão de crédito" line (net of split/refunds).
   const ccExpenses = expenses.filter((e) => e.paymentMethod === 'credit_card')
   const nonCcExpenses = expenses.filter((e) => e.paymentMethod !== 'credit_card')
 
-  const ccNetCents = ccExpenses.reduce(
-    (sum, e) => sum + (e.categoryName === 'Reembolsos' ? -e.amountCents : e.amountCents),
-    0,
-  )
+  const ccNetCents = ccExpenses.reduce((sum, e) => sum + effectiveCents(e), 0)
 
   const byCategory = new Map<string, CategorySummary>()
 

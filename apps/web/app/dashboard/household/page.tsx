@@ -12,7 +12,8 @@ import RecurringExpensesSheet from './components/RecurringExpensesSheet'
 import SettlementSuggestions from './components/SettlementSuggestions'
 import SplitSummaryCards from './components/SplitSummaryCards'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Repeat } from 'lucide-react'
+import { PageTransition } from '@/components/ui/animated'
+import { Receipt, Repeat } from 'lucide-react'
 
 export default async function HouseholdPage({
   searchParams,
@@ -129,6 +130,7 @@ export default async function HouseholdPage({
   const recurringTotalFormatted = `R$ ${(recurringTotalCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Despesas da casa</h2>
@@ -156,27 +158,47 @@ export default async function HouseholdPage({
       />
 
       {recurringTotalCents > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Repeat className="h-4 w-4" />
-              Despesas fixas no mês
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {rows.filter((r) => r.is_recurring).length} despesa(s) recorrente(s)
-            </p>
-          </CardContent>
-        </Card>
+        <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Receipt className="h-4 w-4" />
+                Total de despesas no mês
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{summary.totalExpenses.format()}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {rows.length} despesa(s) no mês
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Repeat className="h-4 w-4" />
+                Despesas fixas no mês
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{recurringTotalFormatted}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {rows.filter((r) => r.is_recurring).length} despesa(s) recorrente(s)
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {settlements.length > 0 && (
-        <SettlementSuggestions settlements={settlements} month={month.toString()} />
+        <div className="max-w-2xl">
+          <SettlementSuggestions settlements={settlements} month={month.toString()} />
+        </div>
       )}
 
       <ExpenseList expenses={expenses} categories={categoryDtos} householdId={household.id} />
     </div>
+    </PageTransition>
   )
 }

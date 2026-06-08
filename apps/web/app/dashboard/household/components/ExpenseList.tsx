@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import RecurringScopeDialog from '@/components/RecurringScopeDialog'
+import { Money } from '@/components/ui/money'
 import { deleteExpense } from '../actions'
 import { deleteExpenseFuture } from '../recurring-actions'
 import type { CategoryDto, ExpenseDto } from '../types'
@@ -40,6 +42,15 @@ type Props = {
 }
 
 type ScopeIntent = { mode: 'edit' | 'delete'; expense: ExpenseDto }
+
+const tbodyVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.04 } },
+}
+const rowVariants = {
+  hidden: { opacity: 0, y: 6 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+}
 
 export default function ExpenseList({ expenses, categories, householdId }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -105,9 +116,18 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
               <TableHead className="w-[72px]" />
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <motion.tbody
+            initial="hidden"
+            animate="visible"
+            variants={tbodyVariants}
+            className="[&_tr:last-child]:border-0"
+          >
             {expenses.map((expense) => (
-              <TableRow key={expense.id}>
+              <motion.tr
+                key={expense.id}
+                variants={rowVariants}
+                className="border-b transition-colors hover:bg-muted/50"
+              >
                 <TableCell className="whitespace-nowrap">{expense.occurredAt}</TableCell>
                 <TableCell>
                   <span className="flex items-center gap-1.5">
@@ -124,7 +144,9 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
                   </Badge>
                 </TableCell>
                 <TableCell>{expense.paidByDisplayName}</TableCell>
-                <TableCell className="text-right font-medium">{expense.amountFormatted}</TableCell>
+                <TableCell className="text-right">
+                  <Money cents={expense.amountCents} size="sm" className="font-medium !text-foreground" />
+                </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => onClickEdit(expense)}>
@@ -135,9 +157,9 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
                     </Button>
                   </div>
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             ))}
-          </TableBody>
+          </motion.tbody>
         </Table>
       </div>
 
