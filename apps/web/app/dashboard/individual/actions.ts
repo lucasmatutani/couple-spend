@@ -359,11 +359,9 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
   const needsHouseholdSplit = splitWithPartner && !reimbursed
 
   if (needsHouseholdSplit) {
-    // Each part = user's share = partner's share = amountCents / splitParts.
-    // The partner's portion is recorded as ONLY_OTHER so it appears in
-    // the household settlement as "partner owes payer this amount".
-    const partCents = Math.round(amountCents / splitParts)
-
+    // Record the full amount as EQUAL so the payer's "Pagou" reflects the real
+    // credit-card outlay and the balance is shared correctly among household
+    // members (memberCount drives the per-person fraction, not a hardcoded 0.5).
     const householdRepo = new SupabaseHouseholdRepository()
     const household = await householdRepo.findFirstByMember(toUserId(user.id))
     if (!household) return { success: false, error: 'Household não encontrado' }
@@ -382,9 +380,9 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
         paid_by: user.id,
         category_id: categoryId ?? defaultCat?.id,
         occurred_at: occurredAt,
-        amount_cents: partCents,
+        amount_cents: amountCents,
         description: description ?? null,
-        split_rule_type: 'ONLY_OTHER' as const,
+        split_rule_type: 'EQUAL' as const,
         split_rule_payer_percent: null,
         source_id: SOURCE_SPLIT,
         external_id: id,
