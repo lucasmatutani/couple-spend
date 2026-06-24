@@ -148,6 +148,7 @@ export default async function HouseholdPage({
             categories={categoryDtos}
             currentUserName={currentUserName}
             otherMemberName={otherMemberName}
+            currentMonth={month.toString()}
           />
         </div>
       </div>

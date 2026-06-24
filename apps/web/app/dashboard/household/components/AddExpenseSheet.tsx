@@ -36,8 +36,11 @@ function parseBrl(s: string): number {
   return Math.round(parseFloat(s.replace(/\./g, '').replace(',', '.')) * 100)
 }
 
-function todayIso(): string {
-  return new Date().toISOString().split('T')[0]!
+function defaultDateForMonth(currentMonth: string): string {
+  const today = new Date().toISOString().split('T')[0]!
+  const todayMonth = today.slice(0, 7)
+  if (todayMonth === currentMonth) return today
+  return `${currentMonth}-01`
 }
 
 type Props = {
@@ -45,9 +48,10 @@ type Props = {
   categories: CategoryDto[]
   currentUserName: string
   otherMemberName: string | null
+  currentMonth: string
 }
 
-export default function AddExpenseSheet({ householdId, categories, currentUserName, otherMemberName }: Props) {
+export default function AddExpenseSheet({ householdId, categories, currentUserName, otherMemberName, currentMonth }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
@@ -57,7 +61,7 @@ export default function AddExpenseSheet({ householdId, categories, currentUserNa
   const [form, setForm] = useState({
     description: '',
     amountBrl: '',
-    occurredAt: todayIso(),
+    occurredAt: defaultDateForMonth(currentMonth),
     categoryId: categories[0]?.id ?? '',
   })
 
@@ -99,7 +103,7 @@ export default function AddExpenseSheet({ householdId, categories, currentUserNa
     setLoading(false)
     if (result.success) {
       setOpen(false)
-      setForm({ description: '', amountBrl: '', occurredAt: todayIso(), categoryId: categories[0]?.id ?? '' })
+      setForm({ description: '', amountBrl: '', occurredAt: defaultDateForMonth(currentMonth), categoryId: categories[0]?.id ?? '' })
       setSplitType('EQUAL')
       setPayerPercent('')
     }
