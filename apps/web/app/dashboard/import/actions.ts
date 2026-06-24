@@ -8,14 +8,9 @@ import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHousehol
 import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryRepository'
 import { getImportRepository } from '@/lib/container'
 import { checkCanImportMonth, PlanLimitError } from '@/lib/plan-guard'
-import { OfxFileAdapter } from '@splitwise/import-ofx'
-import { CsvFileAdapter, ITAU_MAPPING, PICPAY_MAPPING } from '@splitwise/import-csv'
-import type { CsvColumnMapping } from '@splitwise/import-csv'
 import { PdfExtractionError, GeminiPdfExtractionError } from '@splitwise/import-pdf'
 import { getOpenFinanceSource, getPdfSource } from '@/lib/import-sources'
 import { buildCategoryResolver } from '@/lib/resolvers'
-import { batchCategorize } from '@/lib/llm-categorizer'
-import { getAnthropicClient } from '@/lib/anthropic'
 import type { ImportPreview, ReviewRow } from './types'
 
 type ProcessResult =
@@ -76,24 +71,10 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   const { ImportTransactionsUseCase } = await import('@splitwise/import-core')
   const useCase = new ImportTransactionsUseCase(dryRunRepo, resolver, defaultPolicy, systemClock)
 
-  let mapping = formData.get('mapping') as string | null
-  const columnMapping: CsvColumnMapping =
-    mapping === 'picpay' ? PICPAY_MAPPING :
-    mapping === 'itau' ? ITAU_MAPPING :
-    ITAU_MAPPING
-
-  // PDF: fetch categories upfront so the unified prompt can extract + categorize in one call.
-  const allCategories = ext === 'pdf'
-    ? await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
-    : []
+  const allCategories = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
   const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
 
-  const source =
-    ext === 'pdf'
-      ? getPdfSource(buffer, categoryDefs)
-      : ext === 'ofx'
-        ? new OfxFileAdapter(buffer)
-        : new CsvFileAdapter(buffer, columnMapping, 'Importado')
+  const source = getPdfSource(buffer, categoryDefs)
 
   try {
     const summary = await useCase.execute(source, {}, ownerId, householdId)
@@ -111,29 +92,6 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
         }
         return t
       })
-    } else if (process.env.ENABLE_LLM_CATEGORIZATION === 'true') {
-      // OFX / CSV: batch-categorize via separate Haiku call.
-      const uncategorized = transactions.filter((t) => t.categorySource === 'default')
-      if (uncategorized.length > 0) {
-        try {
-          const cats = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
-          const catDefs = cats.map((c) => ({ id: c.id as string, name: c.name }))
-          const llmMap = await batchCategorize(
-            uncategorized.map((t) => ({ externalId: t.raw.externalId, description: t.raw.description })),
-            catDefs,
-            getAnthropicClient(),
-          )
-          transactions = transactions.map((t) => {
-            const llm = llmMap.get(t.raw.externalId)
-            if (llm && llm.confidence >= 0.5) {
-              return { ...t, categoryId: llm.categoryId, categoryConfidence: llm.confidence, categorySource: 'llm' as const }
-            }
-            return t
-          })
-        } catch (err) {
-          console.warn('[LLM Categorization] Failed, using chain results:', err)
-        }
-      }
     }
 
     const preview: ImportPreview = {
@@ -320,30 +278,6 @@ export async function importFromConnectedAccount(accountId: string): Promise<Pro
     const summary = await useCase.execute(source, { dateRange: { from, to } }, ownerId, householdId)
 
     let transactions = summary.importedTransactions
-
-    if (process.env.ENABLE_LLM_CATEGORIZATION === 'true') {
-      const uncategorized = transactions.filter((t) => t.categorySource === 'default')
-      if (uncategorized.length > 0) {
-        try {
-          const allCategories = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
-          const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
-          const llmMap = await batchCategorize(
-            uncategorized.map((t) => ({ externalId: t.raw.externalId, description: t.raw.description })),
-            categoryDefs,
-            getAnthropicClient(),
-          )
-          transactions = transactions.map((t) => {
-            const llm = llmMap.get(t.raw.externalId)
-            if (llm && llm.confidence >= 0.5) {
-              return { ...t, categoryId: llm.categoryId, categoryConfidence: llm.confidence, categorySource: 'llm' as const }
-            }
-            return t
-          })
-        } catch (err) {
-          console.warn('[LLM Categorization] Failed, using chain results:', err)
-        }
-      }
-    }
 
     const preview: ImportPreview = {
       transactions,

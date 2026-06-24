@@ -5,13 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Upload, Loader2, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { processImport, confirmImport, importFromConnectedAccount } from '../actions'
 import type { ConnectedAccountSummary } from '../page'
@@ -47,7 +40,6 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
   const params = use(searchParamsPromise)
   const [step, setStep] = useState<Step>((parseInt(params.step ?? '1') as Step) || 1)
   const [file, setFile] = useState<File | null>(null)
-  const [mapping, setMapping] = useState('itau')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
@@ -94,7 +86,6 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
 
     const fd = new FormData()
     fd.append('file', file)
-    fd.append('mapping', mapping)
 
     const result = await processImport(fd)
     setLoading(false)
@@ -116,7 +107,7 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
 
   async function startProcess() {
     setPlanLimit(false)
-    setIsPdfImport(file?.name.endsWith('.pdf') ?? false)
+    setIsPdfImport(true)
     setStep(2)
     await handleProcess()
   }
@@ -161,8 +152,6 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
 
   // Step 1 — Upload
   if (step === 1) {
-    const isOfx = file?.name.endsWith('.ofx')
-    const isCsv = file?.name.endsWith('.csv')
     const isPdf = file?.name.endsWith('.pdf')
     return (
       <div className="space-y-6 max-w-xl">
@@ -203,12 +192,12 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
                   <p className="text-sm text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Arraste um arquivo .ofx, .csv ou .pdf aqui, ou clique para selecionar</p>
+                <p className="text-sm text-muted-foreground">Arraste um arquivo .pdf aqui, ou clique para selecionar</p>
               )}
               <input
                 id="file-input"
                 type="file"
-                accept=".ofx,.csv,.pdf"
+                accept=".pdf"
                 className="hidden"
                 onChange={(e) => {
                   setFile(e.target.files?.[0] ?? null)
@@ -216,21 +205,6 @@ export default function ImportWizard({ searchParamsPromise, connectedAccounts = 
                 }}
               />
             </div>
-
-            {file && isCsv && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Formato do CSV</p>
-                <Select value={mapping} onValueChange={setMapping}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="itau">Itaú</SelectItem>
-                    <SelectItem value="picpay">PicPay</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             {pdfCostWarningPending && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
