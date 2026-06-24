@@ -12,4 +12,5 @@ export default defineConfig({
     baseURL: process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'http://127.0.0.1:54321',
   },
   // webServer omitted: tests hit the Supabase API directly, no Next.js server needed
+  
 })
