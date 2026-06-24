@@ -33,7 +33,7 @@ export class GeminiPdfAdapter implements TransactionSource {
 
     // Upload the PDF via Files API — avoids base64 inline and supports larger files.
     const uploadedFile = await this.client.files.upload({
-      file: new Blob([this.pdfBuffer], { type: 'application/pdf' }),
+      file: new Blob([new Uint8Array(this.pdfBuffer)], { type: 'application/pdf' }),
       config: { mimeType: 'application/pdf', displayName: 'invoice.pdf' },
     })
 
