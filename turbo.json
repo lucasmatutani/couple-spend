@@ -3,7 +3,28 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+        "NEXT_PUBLIC_APP_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRO_PRICE_ID",
+        "STRIPE_FAMILY_PRICE_ID",
+        "PLUGGY_CLIENT_ID",
+        "PLUGGY_CLIENT_SECRET",
+        "CRON_SECRET",
+        "INVITE_SECRET",
+        "RESEND_API_KEY",
+        "FROM_EMAIL",
+        "ANTHROPIC_API_KEY",
+        "GOOGLE_AI_API_KEY",
+        "PDF_EXTRACTOR",
+        "GEMINI_MODEL"
+      ]
     },
     "typecheck": {
       "outputs": []
