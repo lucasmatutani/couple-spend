@@ -277,10 +277,8 @@ export async function importFromConnectedAccount(accountId: string): Promise<Pro
   try {
     const summary = await useCase.execute(source, { dateRange: { from, to } }, ownerId, householdId)
 
-    let transactions = summary.importedTransactions
-
     const preview: ImportPreview = {
-      transactions,
+      transactions: summary.importedTransactions,
       warnings: summary.warnings,
       householdId,
     }
