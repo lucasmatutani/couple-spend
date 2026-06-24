@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import Stripe from 'stripe'
-import { stripeServer } from '@/lib/stripe'
+import { getStripeServer } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { PlanTier } from '@splitwise/domain'
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let event: Stripe.Event
   try {
-    event = stripeServer.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripeServer().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }

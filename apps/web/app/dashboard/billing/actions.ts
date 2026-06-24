@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
-import { stripeServer } from '@/lib/stripe'
+import { getStripeServer } from '@/lib/stripe'
 import type { PlanTier } from '@splitwise/domain'
 
 const PRICE_TO_TIER: Record<string, PlanTier> = {
@@ -21,7 +21,7 @@ async function getOrCreateCustomer(userId: string, email: string): Promise<strin
 
   if (data?.stripe_customer_id) return data.stripe_customer_id
 
-  const customer = await stripeServer.customers.create({ email, metadata: { supabaseUserId: userId } })
+  const customer = await getStripeServer().customers.create({ email, metadata: { supabaseUserId: userId } })
 
   await supabase
     .from('users')
@@ -48,7 +48,7 @@ export async function createCheckoutSession(priceId: string): Promise<{ url: str
   const customerId = await getOrCreateCustomer(user.id, user.email!)
   const origin = await getOrigin()
 
-  const session = await stripeServer.checkout.sessions.create({
+  const session = await getStripeServer().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
@@ -76,7 +76,7 @@ export async function createPortalSession(): Promise<{ url: string }> {
   if (!data?.stripe_customer_id) redirect('/dashboard/billing')
 
   const origin = await getOrigin()
-  const session = await stripeServer.billingPortal.sessions.create({
+  const session = await getStripeServer().billingPortal.sessions.create({
     customer: data.stripe_customer_id,
     return_url: `${origin}/dashboard/billing`,
   })
@@ -104,7 +104,7 @@ export async function getCurrentSubscription(): Promise<{
 
   if (!data?.stripe_customer_id) return null
 
-  const subscriptions = await stripeServer.subscriptions.list({
+  const subscriptions = await getStripeServer().subscriptions.list({
     customer: data.stripe_customer_id,
     status: 'active',
     limit: 1,

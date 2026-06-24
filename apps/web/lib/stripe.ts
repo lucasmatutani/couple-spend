@@ -1,9 +1,16 @@
 import Stripe from 'stripe'
 import { loadStripe, type Stripe as StripeClient } from '@stripe/stripe-js'
 
-export const stripeServer = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-05-27.dahlia',
-})
+let _stripeServer: Stripe | undefined
+
+export function getStripeServer(): Stripe {
+  if (!_stripeServer) {
+    _stripeServer = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2026-05-27.dahlia',
+    })
+  }
+  return _stripeServer
+}
 
 let stripeClientPromise: Promise<StripeClient | null> | null = null
 
