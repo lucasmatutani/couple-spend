@@ -28,7 +28,25 @@ Bank category → app category hints:
   EDUCAÇÃO             → Educação
   DIVERSOS             → Outros (confidence ≤ 0.5)`
 
-export function buildUnifiedPrompt(categories: CategoryDef[]): string {
+function buildSharedBillSection(sharedBillKeywords: string[]): string {
+  if (sharedBillKeywords.length === 0) return ''
+
+  const keywordList = sharedBillKeywords.map((k) => `  - "${k}"`).join('\n')
+
+  return `
+
+──── RECURRING SHARED-BILL DETECTION ────
+
+The user has registered these keywords as recurring bills that always appear on their
+invoice and are always split with their partner (rent, utilities, subscriptions, etc.):
+${keywordList}
+
+For each transaction, set "isSharedBill": true if its description matches one of these
+keywords — match loosely (case-insensitive, partial, ignoring merchant suffixes/codes
+like ".COM", store numbers, or city names). Otherwise set "isSharedBill": false.`
+}
+
+export function buildUnifiedPrompt(categories: CategoryDef[], sharedBillKeywords: string[] = []): string {
   const categoryList = categories
     .map((c) => {
       const hint = CATEGORY_HINTS[c.name] ?? c.name.toLowerCase()
@@ -63,6 +81,7 @@ ${BANK_CATEGORY_MAPPING}
 
 Available categories:
 ${categoryList}
+${buildSharedBillSection(sharedBillKeywords)}
 
 ──── OUTPUT SCHEMA ────
 
@@ -77,7 +96,7 @@ ${categoryList}
       "type": "expense" | "income",
       "installment": { "current": number, "total": number } | null,
       "categoryId": "exact id from the list above",
-      "confidence": number
+      "confidence": number${sharedBillKeywords.length > 0 ? ',\n      "isSharedBill": boolean' : ''}
     }
   ],
   "warnings": ["string"]

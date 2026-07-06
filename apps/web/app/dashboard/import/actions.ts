@@ -9,13 +9,22 @@ import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryR
 import { getImportRepository } from '@/lib/container'
 import { checkCanImportMonth, PlanLimitError } from '@/lib/plan-guard'
 import { PdfExtractionError, GeminiPdfExtractionError } from '@splitwise/import-pdf'
-import { getOpenFinanceSource, getPdfSource } from '@/lib/import-sources'
+import { getPdfSource } from '@/lib/import-sources'
 import { buildCategoryResolver } from '@/lib/resolvers'
+import { upsertCreditCardHouseholdSplit } from '@/lib/cc-split'
 import type { ImportPreview, ReviewRow } from './types'
 
 type ProcessResult =
   | { success: true; preview: ImportPreview }
   | { success: false; error: string }
+
+async function getSharedBillKeywords(supabase: SupabaseClient, ownerId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('shared_bill_keywords')
+    .select('keyword')
+    .eq('owner_id', ownerId)
+  return (data ?? []).map((r) => r.keyword as string)
+}
 
 async function getDefaultCategoryId(supabase: SupabaseClient): Promise<string> {
   const { data } = await supabase
@@ -74,7 +83,8 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   const allCategories = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
   const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
 
-  const source = getPdfSource(buffer, categoryDefs)
+  const sharedBillKeywords = await getSharedBillKeywords(supabase, ownerId)
+  const source = getPdfSource(buffer, categoryDefs, sharedBillKeywords)
 
   try {
     const summary = await useCase.execute(source, {}, ownerId, householdId)
@@ -129,6 +139,14 @@ export async function confirmImport(
   const repo = getImportRepository()
 
   const included = rows.filter((r) => !r.excluded)
+  console.log(
+    '[confirmImport] incoming pdf rows (BEFORE):',
+    JSON.stringify(included.filter((r) => r.sourceId === 'pdf-invoice').map((r) => ({
+      externalId: r.externalId,
+      description: r.description,
+      isSharedBill: r.isSharedBill,
+    }))),
+  )
   let skipped = 0
 
   const toSave = []
@@ -150,6 +168,10 @@ export async function confirmImport(
         description: row.description,
         currency: 'BRL' as const,
         sourceInstitution: 'Importado',
+        // isSharedBill was flagged by the LLM in processImport and travels with the
+        // ReviewRow (client round-trip loses everything not on that type) — carry it
+        // back into raw.metadata so savePersonalBatch can read it.
+        metadata: { isSharedBill: row.isSharedBill ?? false },
       },
       categoryId: row.categoryId,
       categoryConfidence: row.categoryConfidence,
@@ -184,6 +206,14 @@ export async function confirmImport(
           ? { ...t, categoryId: refundCategoryId }
           : t,
       )
+      console.log(
+        '[confirmImport] normalizedPdfRows going into savePersonalBatch (BEFORE):',
+        JSON.stringify(normalizedPdfRows.map((t) => ({
+          externalId: t.raw.externalId,
+          description: t.raw.description,
+          metadata: t.raw.metadata,
+        }))),
+      )
 
       // Billing month: use the explicit targetMonth from the URL when provided,
       // otherwise fall back to the latest transaction date in the statement.
@@ -202,6 +232,36 @@ export async function confirmImport(
       if (pdfResult.conflictMonth) {
         conflictMonth = pdfResult.conflictMonth
       }
+      console.log('[confirmImport] savePersonalBatch result (AFTER):', JSON.stringify(pdfResult))
+
+      // Auto-split recurring bills recognized via keywords registered in
+      // Settings > Contas fixas compartilhadas — mirror into the household ledger
+      // just like a manual "Dividir com o parceiro" edit would.
+      const pdfReviewRowsByExternalId = new Map(
+        included.filter((r) => r.sourceId === 'pdf-invoice').map((r) => [r.externalId, r]),
+      )
+      const sharedBillInserts = pdfResult.insertedRows
+        .map((ir) => ({ ir, row: pdfReviewRowsByExternalId.get(ir.externalId) }))
+        .filter((x): x is { ir: { id: string; externalId: string }; row: ReviewRow } =>
+          !!x.row?.isSharedBill && x.row.amountCents > 0)
+      console.log(
+        '[confirmImport] sharedBillInserts to mirror into household ledger (AFTER):',
+        JSON.stringify(sharedBillInserts),
+      )
+
+      await Promise.all(
+        sharedBillInserts.map(({ ir, row }) =>
+          upsertCreditCardHouseholdSplit(supabase, {
+            personalExpenseId: ir.id,
+            householdId,
+            paidBy: user.id,
+            categoryId: row.categoryId,
+            occurredAt: billingOccurredAt,
+            amountCents: Math.abs(row.amountCents),
+            description: row.description || null,
+          }),
+        ),
+      )
     }
 
     if (sharedRows.length > 0) {
@@ -221,69 +281,5 @@ export async function confirmImport(
 
   revalidatePath('/dashboard/individual')
   revalidatePath('/dashboard/household')
-  revalidatePath('/dashboard/import')
   return { success: true, imported, skipped: totalSkipped, conflictMessage }
-}
-
-export async function importFromConnectedAccount(accountId: string): Promise<ProcessResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Não autorizado' }
-
-  try {
-    await checkCanImportMonth(toUserId(user.id), YearMonth.current())
-  } catch (err) {
-    if (err instanceof PlanLimitError) return { success: false, error: 'plan_limit' }
-    throw err
-  }
-
-  const { data: account } = await supabase
-    .from('connected_accounts')
-    .select('provider_item_id, institution_name')
-    .eq('id', accountId)
-    .single()
-  if (!account) return { success: false, error: 'Conta conectada não encontrada' }
-
-  const household = await new SupabaseHouseholdRepository().findFirstByMember(toUserId(user.id))
-  if (!household) return { success: false, error: 'Household não encontrado' }
-
-  const householdId = household.id as string
-  const ownerId = user.id
-
-  const defaultCategoryId = await getDefaultCategoryId(supabase)
-
-  const dryRunRepo = {
-    existsByExternalId: async () => false,
-    saveBatch: async () => {},
-  }
-
-  const resolver = await buildCategoryResolver(
-    toHouseholdId(householdId),
-    toUserId(ownerId),
-    toCategoryId(defaultCategoryId),
-  )
-
-  const defaultPolicy = { apply: () => 'EQUAL' as const }
-  const systemClock = { now: () => new Date() }
-
-  const { ImportTransactionsUseCase } = await import('@splitwise/import-core')
-  const useCase = new ImportTransactionsUseCase(dryRunRepo, resolver, defaultPolicy, systemClock)
-
-  const source = getOpenFinanceSource(account.provider_item_id, account.institution_name)
-
-  const to = new Date()
-  const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  try {
-    const summary = await useCase.execute(source, { dateRange: { from, to } }, ownerId, householdId)
-
-    const preview: ImportPreview = {
-      transactions: summary.importedTransactions,
-      warnings: summary.warnings,
-      householdId,
-    }
-    return { success: true, preview }
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Erro ao buscar transações' }
-  }
 }

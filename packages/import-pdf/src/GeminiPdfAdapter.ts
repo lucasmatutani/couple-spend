@@ -25,11 +25,12 @@ export class GeminiPdfAdapter implements TransactionSource {
     private readonly client: GoogleGenAI,
     private readonly institutionHint?: string,
     private readonly categories: CategoryDef[] = [],
+    private readonly sharedBillKeywords: string[] = [],
   ) {}
 
   async fetch(_params: FetchParams): Promise<FetchResult> {
     const modelName = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-preview-05-20'
-    const prompt = buildUnifiedPrompt(this.categories)
+    const prompt = buildUnifiedPrompt(this.categories, this.sharedBillKeywords)
 
     // Upload the PDF via Files API — avoids base64 inline and supports larger files.
     const uploadedFile = await this.client.files.upload({
@@ -123,6 +124,7 @@ export class GeminiPdfAdapter implements TransactionSource {
             ...(t.categoryId
               ? { suggestedCategoryId: t.categoryId, categoryConfidence: t.confidence ?? 0 }
               : {}),
+            isSharedBill: t.isSharedBill ?? false,
           },
         }
       }),

@@ -19,12 +19,13 @@ export function getCsvSource(buffer: Buffer, mapping: CsvColumnMapping, hint?: s
 export function getPdfSource(
   buffer: Buffer,
   categories: CategoryDef[],
+  sharedBillKeywords: string[] = [],
   institutionHint?: string,
 ): PdfInvoiceAdapter | GeminiPdfAdapter {
   if (process.env.PDF_EXTRACTOR === 'gemini') {
-    return new GeminiPdfAdapter(buffer, getGeminiClient(), institutionHint, categories)
+    return new GeminiPdfAdapter(buffer, getGeminiClient(), institutionHint, categories, sharedBillKeywords)
   }
-  return new PdfInvoiceAdapter(buffer, getAnthropicClient(), institutionHint, categories)
+  return new PdfInvoiceAdapter(buffer, getAnthropicClient(), institutionHint, categories, sharedBillKeywords)
 }
 
 export function getOpenFinanceSource(itemId: string, institutionName: string): PluggyAdapter {

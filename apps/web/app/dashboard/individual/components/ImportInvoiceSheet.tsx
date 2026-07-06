@@ -48,6 +48,7 @@ function buildReviewRows(pv: ImportPreview): ReviewRow[] {
     sourceId: t.sourceId,
     installment:
       (t.raw.metadata?.installment as { current: number; total: number } | null | undefined) ?? null,
+    isSharedBill: (t.raw.metadata?.isSharedBill as boolean | undefined) ?? false,
   }))
 }
 
@@ -315,6 +316,14 @@ export default function ImportInvoiceDialog({ currentMonth, trigger }: Props) {
                         {row.installment && (
                           <span className="ml-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
                             {row.installment.current}/{row.installment.total}
+                          </span>
+                        )}
+                        {row.isSharedBill && (
+                          <span
+                            className="ml-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800"
+                            title="Reconhecida como conta fixa dividida com o parceiro"
+                          >
+                            ÷ parceiro
                           </span>
                         )}
                       </td>

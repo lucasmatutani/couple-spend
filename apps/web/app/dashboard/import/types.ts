@@ -20,4 +20,5 @@ export type ReviewRow = {
   excluded: boolean
   sourceId: string
   installment?: { current: number; total: number } | null
+  isSharedBill?: boolean
 }

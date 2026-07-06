@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getIncomeRepository, getInvestmentRepository, getPersonalExpenseRepository } from '@/lib/container'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
+import { upsertCreditCardHouseholdSplit, removeCreditCardHouseholdSplit } from '@/lib/cc-split'
 import {
   Income,
   Investment,
@@ -354,54 +355,25 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
   if (updateErr) return { success: false, error: 'Erro ao atualizar despesa' }
 
   // Sync the household share —————————————————————————————————————————————
-  const SOURCE_SPLIT = 'cc-split'
-
   const needsHouseholdSplit = splitWithPartner && !reimbursed
 
+  const householdRepo = new SupabaseHouseholdRepository()
+  const household = await householdRepo.findFirstByMember(toUserId(user.id))
+
   if (needsHouseholdSplit) {
-    // Record the full amount as EQUAL so the payer's "Pagou" reflects the real
-    // credit-card outlay and the balance is shared correctly among household
-    // members (memberCount drives the per-person fraction, not a hardcoded 0.5).
-    const householdRepo = new SupabaseHouseholdRepository()
-    const household = await householdRepo.findFirstByMember(toUserId(user.id))
     if (!household) return { success: false, error: 'Household não encontrado' }
-
-    const { data: defaultCat } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('name', 'Outros')
-      .is('household_id', null)
-      .single()
-
-    await supabase.from('expenses').upsert(
-      {
-        id: crypto.randomUUID(),
-        household_id: household.id,
-        paid_by: user.id,
-        category_id: categoryId ?? defaultCat?.id,
-        occurred_at: occurredAt,
-        amount_cents: amountCents,
-        description: description ?? null,
-        split_rule_type: 'EQUAL' as const,
-        split_rule_payer_percent: null,
-        source_id: SOURCE_SPLIT,
-        external_id: id,
-        imported_at: new Date().toISOString(),
-      },
-      { onConflict: 'household_id,source_id,external_id' },
-    )
-  } else {
+    await upsertCreditCardHouseholdSplit(supabase, {
+      personalExpenseId: id,
+      householdId: household.id as string,
+      paidBy: user.id,
+      categoryId,
+      occurredAt,
+      amountCents,
+      description: description ?? null,
+    })
+  } else if (household) {
     // split_parts reverted to 1, or expense is reimbursed — remove any linked household expense
-    const householdRepo = new SupabaseHouseholdRepository()
-    const household = await householdRepo.findFirstByMember(toUserId(user.id))
-    if (household) {
-      await supabase
-        .from('expenses')
-        .delete()
-        .eq('household_id', household.id)
-        .eq('source_id', SOURCE_SPLIT)
-        .eq('external_id', id)
-    }
+    await removeCreditCardHouseholdSplit(supabase, household.id as string, id)
   }
 
   revalidatePath('/dashboard/individual')

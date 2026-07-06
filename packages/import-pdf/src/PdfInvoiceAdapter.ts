@@ -25,6 +25,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
     private readonly client: Anthropic,
     private readonly institutionHint?: string,
     private readonly categories: CategoryDef[] = [],
+    private readonly sharedBillKeywords: string[] = [],
   ) {}
 
   async fetch(_params: FetchParams): Promise<FetchResult> {
@@ -34,7 +35,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
       system: [
         {
           type: 'text',
-          text: buildUnifiedPrompt(this.categories),
+          text: buildUnifiedPrompt(this.categories, this.sharedBillKeywords),
           cache_control: { type: 'ephemeral' },
         },
       ],
@@ -118,6 +119,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
             inputTokens: message.usage.input_tokens,
             outputTokens: message.usage.output_tokens,
             ...(t.categoryId ? { suggestedCategoryId: t.categoryId, categoryConfidence: t.confidence ?? 0 } : {}),
+            isSharedBill: t.isSharedBill ?? false,
           },
         }
       }),

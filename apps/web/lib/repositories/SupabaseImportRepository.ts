@@ -63,8 +63,8 @@ export class SupabaseImportRepository implements TransactionRepository {
     transactions: ImportedTransaction[],
     paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other',
     billingOccurredAt: string,
-  ): Promise<{ inserted: number; conflictMonth: string | null }> {
-    if (transactions.length === 0) return { inserted: 0, conflictMonth: null }
+  ): Promise<{ inserted: number; conflictMonth: string | null; insertedRows: { id: string; externalId: string }[] }> {
+    if (transactions.length === 0) return { inserted: 0, conflictMonth: null, insertedRows: [] }
 
     const supabase = await createClient()
 
@@ -85,32 +85,38 @@ export class SupabaseImportRepository implements TransactionRepository {
         .in('external_id', externalIds),
     ])
 
-    const rows = transactions.map((t) => ({
-      id: crypto.randomUUID(),
-      owner_id: t.ownerId,
-      category_id: t.categoryId,
-      occurred_at: billingOccurredAt,
-      amount_cents: Math.abs(t.raw.amountCents),
-      description: t.raw.description || null,
-      source_id: t.sourceId,
-      external_id: t.raw.externalId,
-      imported_at: t.importedAt.toISOString(),
-      payment_method: paymentMethod,
-    }))
+    const rows = transactions.map((t) => {
+      const isSharedBill = t.raw.metadata?.['isSharedBill'] === true
+      return {
+        id: crypto.randomUUID(),
+        owner_id: t.ownerId,
+        category_id: t.categoryId,
+        occurred_at: billingOccurredAt,
+        amount_cents: Math.abs(t.raw.amountCents),
+        description: t.raw.description || null,
+        source_id: t.sourceId,
+        external_id: t.raw.externalId,
+        imported_at: t.importedAt.toISOString(),
+        payment_method: paymentMethod,
+        split_parts: isSharedBill ? 2 : 1,
+        split_with_partner: isSharedBill,
+      }
+    })
 
-    // .select('id') causes PostgreSQL to RETURNING id — with ignoreDuplicates: true
-    // (ON CONFLICT DO NOTHING), only actually-inserted rows are returned.
+    // .select('id, external_id') causes PostgreSQL to RETURNING those columns — with
+    // ignoreDuplicates: true (ON CONFLICT DO NOTHING), only actually-inserted rows come back.
     const { data, error } = await supabase
       .from('personal_expenses')
       .upsert(rows as never, {
         onConflict: 'owner_id,source_id,external_id',
         ignoreDuplicates: true,
       })
-      .select('id')
+      .select('id, external_id')
 
     if (error) throw new Error(`Failed to save personal imported transactions: ${error.message}`)
 
     const inserted = data?.length ?? 0
+    const insertedRows = (data ?? []).map((r) => ({ id: r.id as string, externalId: r.external_id as string }))
 
     // If some rows were skipped, find which month already holds those transactions
     // so the caller can show an informative message to the user.
@@ -127,6 +133,6 @@ export class SupabaseImportRepository implements TransactionRepository {
       conflictMonth = existing?.occurred_at ?? null
     }
 
-    return { inserted, conflictMonth }
+    return { inserted, conflictMonth, insertedRows }
   }
 }
