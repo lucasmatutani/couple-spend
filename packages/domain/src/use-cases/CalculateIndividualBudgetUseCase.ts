@@ -72,6 +72,10 @@ export class CalculateIndividualBudgetUseCase {
     let bucketWants = 0
     let bucketSavings = 0
     for (const e of personalExpenses) {
+      // Already represented as a shared expense in sharedShareCents above — counting
+      // it here too would double the user's share (once via owedBy, once via effectiveAmount).
+      if (e.splitWithPartner) continue
+
       const catId = e.categoryId as string
       const isRefund = refundCategoryId !== undefined && catId === refundCategoryId
       const effectiveCents = e.effectiveAmount.cents

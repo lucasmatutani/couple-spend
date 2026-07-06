@@ -56,7 +56,10 @@ function makeExpense(id: string, paidBy: UserId, cents: number, rule: SplitRule)
   })
 }
 
-function makePersonalExpense(cents: number): PersonalExpense {
+function makePersonalExpense(
+  cents: number,
+  overrides: { splitParts?: number; splitWithPartner?: boolean } = {},
+): PersonalExpense {
   return PersonalExpense.create({
     id: toPersonalExpenseId('pe-1'),
     ownerId: USER,
@@ -66,6 +69,7 @@ function makePersonalExpense(cents: number): PersonalExpense {
     description: null,
     sourceId: 'manual',
     externalId: 'pe-ext-1',
+    ...overrides,
   })
 }
 
@@ -225,6 +229,38 @@ describe('CalculateIndividualBudgetUseCase', () => {
 
     expect(summary.pctSpent).toBe(0)
     expect(summary.pctInvested).toBe(0)
+  })
+
+  it('does NOT double-count a credit-card expense split with the partner', async () => {
+    // Regression: a CC expense marked "split with partner" is stored as a
+    // personal_expense (already halved via splitParts) AND mirrored into the
+    // household `expenses` table with the FULL amount for EQUAL split.
+    // The user's real cost is half — it must not be counted twice.
+    const household = makeHousehold(USER, 2)
+    const linkedSharedExpense = makeExpense('cc-split-1', USER, 10000, SplitRule.equal())
+    const ccPersonalExpense = makePersonalExpense(10000, { splitParts: 2, splitWithPartner: true })
+
+    const repos = makeRepos({
+      households: [household],
+      expenses: [linkedSharedExpense],
+      personalExpenses: [ccPersonalExpense],
+      incomes: [makeIncome(100000)],
+    })
+
+    const useCase = new CalculateIndividualBudgetUseCase(
+      repos.householdRepo,
+      repos.expenseRepo,
+      repos.personalExpenseRepo,
+      repos.incomeRepo,
+      repos.investmentRepo,
+      repos.categoryRepo,
+    )
+
+    const summary = await useCase.execute(USER, MONTH)
+
+    // Only the shared-expense share (10000 / 2 members = 5000) should count.
+    expect(summary.totalSpent.cents).toBe(5000)
+    expect(summary.surplus.cents).toBe(95000)
   })
 
   it('sums income from multiple sources', async () => {
