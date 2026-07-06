@@ -26,11 +26,12 @@ export class GeminiPdfAdapter implements TransactionSource {
     private readonly institutionHint?: string,
     private readonly categories: CategoryDef[] = [],
     private readonly sharedBillKeywords: string[] = [],
+    private readonly fullRefundKeywords: string[] = [],
   ) {}
 
   async fetch(_params: FetchParams): Promise<FetchResult> {
     const modelName = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-preview-05-20'
-    const prompt = buildUnifiedPrompt(this.categories, this.sharedBillKeywords)
+    const prompt = buildUnifiedPrompt(this.categories, this.sharedBillKeywords, this.fullRefundKeywords)
 
     // Upload the PDF via Files API — avoids base64 inline and supports larger files.
     const uploadedFile = await this.client.files.upload({
@@ -125,6 +126,7 @@ export class GeminiPdfAdapter implements TransactionSource {
               ? { suggestedCategoryId: t.categoryId, categoryConfidence: t.confidence ?? 0 }
               : {}),
             isSharedBill: t.isSharedBill ?? false,
+            isFullyReimbursed: t.isFullyReimbursed ?? false,
           },
         }
       }),

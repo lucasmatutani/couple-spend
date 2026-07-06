@@ -20,12 +20,13 @@ export function getPdfSource(
   buffer: Buffer,
   categories: CategoryDef[],
   sharedBillKeywords: string[] = [],
+  fullRefundKeywords: string[] = [],
   institutionHint?: string,
 ): PdfInvoiceAdapter | GeminiPdfAdapter {
   if (process.env.PDF_EXTRACTOR === 'gemini') {
-    return new GeminiPdfAdapter(buffer, getGeminiClient(), institutionHint, categories, sharedBillKeywords)
+    return new GeminiPdfAdapter(buffer, getGeminiClient(), institutionHint, categories, sharedBillKeywords, fullRefundKeywords)
   }
-  return new PdfInvoiceAdapter(buffer, getAnthropicClient(), institutionHint, categories, sharedBillKeywords)
+  return new PdfInvoiceAdapter(buffer, getAnthropicClient(), institutionHint, categories, sharedBillKeywords, fullRefundKeywords)
 }
 
 export function getOpenFinanceSource(itemId: string, institutionName: string): PluggyAdapter {

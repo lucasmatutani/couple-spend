@@ -28,25 +28,33 @@ Bank category → app category hints:
   EDUCAÇÃO             → Educação
   DIVERSOS             → Outros (confidence ≤ 0.5)`
 
-function buildSharedBillSection(sharedBillKeywords: string[]): string {
-  if (sharedBillKeywords.length === 0) return ''
+function buildKeywordMatchSection(
+  title: string,
+  keywords: string[],
+  keywordMeaning: string,
+  fieldName: string,
+): string {
+  if (keywords.length === 0) return ''
 
-  const keywordList = sharedBillKeywords.map((k) => `  - "${k}"`).join('\n')
+  const keywordList = keywords.map((k) => `  - "${k}"`).join('\n')
 
   return `
 
-──── RECURRING SHARED-BILL DETECTION ────
+──── ${title} ────
 
-The user has registered these keywords as recurring bills that always appear on their
-invoice and are always split with their partner (rent, utilities, subscriptions, etc.):
+The user has registered these keywords as ${keywordMeaning}:
 ${keywordList}
 
-For each transaction, set "isSharedBill": true if its description matches one of these
+For each transaction, set "${fieldName}": true if its description matches one of these
 keywords — match loosely (case-insensitive, partial, ignoring merchant suffixes/codes
-like ".COM", store numbers, or city names). Otherwise set "isSharedBill": false.`
+like ".COM", store numbers, or city names). Otherwise set "${fieldName}": false.`
 }
 
-export function buildUnifiedPrompt(categories: CategoryDef[], sharedBillKeywords: string[] = []): string {
+export function buildUnifiedPrompt(
+  categories: CategoryDef[],
+  sharedBillKeywords: string[] = [],
+  fullRefundKeywords: string[] = [],
+): string {
   const categoryList = categories
     .map((c) => {
       const hint = CATEGORY_HINTS[c.name] ?? c.name.toLowerCase()
@@ -81,7 +89,18 @@ ${BANK_CATEGORY_MAPPING}
 
 Available categories:
 ${categoryList}
-${buildSharedBillSection(sharedBillKeywords)}
+${buildKeywordMatchSection(
+  'RECURRING SHARED-BILL DETECTION',
+  sharedBillKeywords,
+  'recurring bills that always appear on their invoice and are always split with their partner (rent, utilities, subscriptions, etc.)',
+  'isSharedBill',
+)}
+${buildKeywordMatchSection(
+  'FULL-REFUND BILL DETECTION',
+  fullRefundKeywords,
+  'bills they pay in full on this card but are always fully reimbursed for by a third party (employer, health plan, etc.) — the transaction costs them R$0',
+  'isFullyReimbursed',
+)}
 
 ──── OUTPUT SCHEMA ────
 
@@ -96,7 +115,7 @@ ${buildSharedBillSection(sharedBillKeywords)}
       "type": "expense" | "income",
       "installment": { "current": number, "total": number } | null,
       "categoryId": "exact id from the list above",
-      "confidence": number${sharedBillKeywords.length > 0 ? ',\n      "isSharedBill": boolean' : ''}
+      "confidence": number${sharedBillKeywords.length > 0 ? ',\n      "isSharedBill": boolean' : ''}${fullRefundKeywords.length > 0 ? ',\n      "isFullyReimbursed": boolean' : ''}
     }
   ],
   "warnings": ["string"]

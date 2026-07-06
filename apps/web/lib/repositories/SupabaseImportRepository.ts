@@ -86,7 +86,10 @@ export class SupabaseImportRepository implements TransactionRepository {
     ])
 
     const rows = transactions.map((t) => {
-      const isSharedBill = t.raw.metadata?.['isSharedBill'] === true
+      const isFullyReimbursed = t.raw.metadata?.['isFullyReimbursed'] === true
+      // isFullyReimbursed wins if a description somehow matches both keyword lists —
+      // a reimbursed expense costs the user nothing, so it can't also be a partner split.
+      const isSharedBill = !isFullyReimbursed && t.raw.metadata?.['isSharedBill'] === true
       return {
         id: crypto.randomUUID(),
         owner_id: t.ownerId,
@@ -100,6 +103,7 @@ export class SupabaseImportRepository implements TransactionRepository {
         payment_method: paymentMethod,
         split_parts: isSharedBill ? 2 : 1,
         split_with_partner: isSharedBill,
+        reimbursed: isFullyReimbursed,
       }
     })
 

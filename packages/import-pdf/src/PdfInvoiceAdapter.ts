@@ -26,6 +26,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
     private readonly institutionHint?: string,
     private readonly categories: CategoryDef[] = [],
     private readonly sharedBillKeywords: string[] = [],
+    private readonly fullRefundKeywords: string[] = [],
   ) {}
 
   async fetch(_params: FetchParams): Promise<FetchResult> {
@@ -35,7 +36,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
       system: [
         {
           type: 'text',
-          text: buildUnifiedPrompt(this.categories, this.sharedBillKeywords),
+          text: buildUnifiedPrompt(this.categories, this.sharedBillKeywords, this.fullRefundKeywords),
           cache_control: { type: 'ephemeral' },
         },
       ],
@@ -120,6 +121,7 @@ export class PdfInvoiceAdapter implements TransactionSource {
             outputTokens: message.usage.output_tokens,
             ...(t.categoryId ? { suggestedCategoryId: t.categoryId, categoryConfidence: t.confidence ?? 0 } : {}),
             isSharedBill: t.isSharedBill ?? false,
+            isFullyReimbursed: t.isFullyReimbursed ?? false,
           },
         }
       }),

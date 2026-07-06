@@ -16,6 +16,7 @@ export const ExtractionResultSchema = z.object({
       categoryId: z.string().optional(),
       confidence: z.number().min(0).max(1).optional(),
       isSharedBill: z.boolean().optional(),
+      isFullyReimbursed: z.boolean().optional(),
     }),
   ),
   warnings: z.array(z.string()),

@@ -49,6 +49,7 @@ function buildReviewRows(pv: ImportPreview): ReviewRow[] {
     installment:
       (t.raw.metadata?.installment as { current: number; total: number } | null | undefined) ?? null,
     isSharedBill: (t.raw.metadata?.isSharedBill as boolean | undefined) ?? false,
+    isFullyReimbursed: (t.raw.metadata?.isFullyReimbursed as boolean | undefined) ?? false,
   }))
 }
 
@@ -324,6 +325,14 @@ export default function ImportInvoiceDialog({ currentMonth, trigger }: Props) {
                             title="Reconhecida como conta fixa dividida com o parceiro"
                           >
                             ÷ parceiro
+                          </span>
+                        )}
+                        {row.isFullyReimbursed && (
+                          <span
+                            className="ml-1.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-800"
+                            title="Reconhecida como conta com reembolso total"
+                          >
+                            reembolso total
                           </span>
                         )}
                       </td>

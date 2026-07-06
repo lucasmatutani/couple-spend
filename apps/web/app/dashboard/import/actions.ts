@@ -18,12 +18,19 @@ type ProcessResult =
   | { success: true; preview: ImportPreview }
   | { success: false; error: string }
 
-async function getSharedBillKeywords(supabase: SupabaseClient, ownerId: string): Promise<string[]> {
+async function getKeywordsByKind(
+  supabase: SupabaseClient,
+  ownerId: string,
+): Promise<{ sharedBillKeywords: string[]; fullRefundKeywords: string[] }> {
   const { data } = await supabase
     .from('shared_bill_keywords')
-    .select('keyword')
+    .select('keyword, kind')
     .eq('owner_id', ownerId)
-  return (data ?? []).map((r) => r.keyword as string)
+  const rows = (data ?? []) as { keyword: string; kind: 'split' | 'reimbursed' }[]
+  return {
+    sharedBillKeywords: rows.filter((r) => r.kind === 'split').map((r) => r.keyword),
+    fullRefundKeywords: rows.filter((r) => r.kind === 'reimbursed').map((r) => r.keyword),
+  }
 }
 
 async function getDefaultCategoryId(supabase: SupabaseClient): Promise<string> {
@@ -83,8 +90,8 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   const allCategories = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
   const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
 
-  const sharedBillKeywords = await getSharedBillKeywords(supabase, ownerId)
-  const source = getPdfSource(buffer, categoryDefs, sharedBillKeywords)
+  const { sharedBillKeywords, fullRefundKeywords } = await getKeywordsByKind(supabase, ownerId)
+  const source = getPdfSource(buffer, categoryDefs, sharedBillKeywords, fullRefundKeywords)
 
   try {
     const summary = await useCase.execute(source, {}, ownerId, householdId)
@@ -168,10 +175,10 @@ export async function confirmImport(
         description: row.description,
         currency: 'BRL' as const,
         sourceInstitution: 'Importado',
-        // isSharedBill was flagged by the LLM in processImport and travels with the
-        // ReviewRow (client round-trip loses everything not on that type) — carry it
-        // back into raw.metadata so savePersonalBatch can read it.
-        metadata: { isSharedBill: row.isSharedBill ?? false },
+        // isSharedBill/isFullyReimbursed were flagged by the LLM in processImport and travel
+        // with the ReviewRow (client round-trip loses everything not on that type) — carry
+        // them back into raw.metadata so savePersonalBatch can read them.
+        metadata: { isSharedBill: row.isSharedBill ?? false, isFullyReimbursed: row.isFullyReimbursed ?? false },
       },
       categoryId: row.categoryId,
       categoryConfidence: row.categoryConfidence,
@@ -243,7 +250,7 @@ export async function confirmImport(
       const sharedBillInserts = pdfResult.insertedRows
         .map((ir) => ({ ir, row: pdfReviewRowsByExternalId.get(ir.externalId) }))
         .filter((x): x is { ir: { id: string; externalId: string }; row: ReviewRow } =>
-          !!x.row?.isSharedBill && x.row.amountCents > 0)
+          !!x.row?.isSharedBill && !x.row.isFullyReimbursed && x.row.amountCents > 0)
       console.log(
         '[confirmImport] sharedBillInserts to mirror into household ledger (AFTER):',
         JSON.stringify(sharedBillInserts),
