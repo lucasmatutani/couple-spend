@@ -5,7 +5,9 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { getIncomeRepository, getInvestmentRepository, getPersonalExpenseRepository } from '@/lib/container'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
+import { SupabaseCategoryMemoryRepository } from '@/lib/repositories/SupabaseCategoryMemoryRepository'
 import { upsertCreditCardHouseholdSplit, removeCreditCardHouseholdSplit } from '@/lib/cc-split'
+import { normalizeDescriptionForMemory } from '@splitwise/categorization'
 import {
   Income,
   Investment,
@@ -347,6 +349,13 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
 
   const { id, categoryId, amountCents, splitParts, reimbursed, splitWithPartner, description, occurredAt } = parsed.data
 
+  const { data: existing } = await supabase
+    .from('personal_expenses')
+    .select('category_id, description')
+    .eq('id', id)
+    .eq('owner_id', user.id)
+    .single()
+
   const { error: updateErr } = await supabase
     .from('personal_expenses')
     .update({ category_id: categoryId, amount_cents: amountCents, split_parts: splitParts, reimbursed, split_with_partner: splitWithPartner } as never)
@@ -359,6 +368,21 @@ export async function updateCreditCardExpense(input: unknown): Promise<ActionRes
 
   const householdRepo = new SupabaseHouseholdRepository()
   const household = await householdRepo.findFirstByMember(toUserId(user.id))
+
+  // Learn from manual recategorization: only when the category actually changed
+  // and there's a description to key off of, so future imports of the same
+  // merchant description land in the category the user picked here.
+  const previousCategoryId = (existing as { category_id: string; description: string | null } | null)?.category_id
+  const existingDescription = (existing as { category_id: string; description: string | null } | null)?.description
+  if (household && previousCategoryId && previousCategoryId !== categoryId && existingDescription) {
+    await new SupabaseCategoryMemoryRepository().save({
+      householdId: household.id as string,
+      ownerId: user.id,
+      descriptionPattern: normalizeDescriptionForMemory(existingDescription),
+      categoryId,
+      confidence: 1.0,
+    })
+  }
 
   if (needsHouseholdSplit) {
     if (!household) return { success: false, error: 'Household não encontrado' }

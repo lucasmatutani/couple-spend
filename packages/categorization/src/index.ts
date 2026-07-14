@@ -1,4 +1,5 @@
 export type { CategoryMemoryRepository, CategoryMemoryRow, CategoryMemoryEntry } from './ports/CategoryMemoryRepository.js'
+export { normalizeDescriptionForMemory } from './normalizeDescription.js'
 export type { CategoryResolverChainLink } from './resolvers/CategoryResolverChainLink.js'
 export { RuleBasedResolver, DEFAULT_RULES } from './resolvers/RuleBasedResolver.js'
 export type { CategoryRule } from './resolvers/RuleBasedResolver.js'

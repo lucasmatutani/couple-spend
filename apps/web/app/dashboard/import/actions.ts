@@ -146,14 +146,6 @@ export async function confirmImport(
   const repo = getImportRepository()
 
   const included = rows.filter((r) => !r.excluded)
-  console.log(
-    '[confirmImport] incoming pdf rows (BEFORE):',
-    JSON.stringify(included.filter((r) => r.sourceId === 'pdf-invoice').map((r) => ({
-      externalId: r.externalId,
-      description: r.description,
-      isSharedBill: r.isSharedBill,
-    }))),
-  )
   let skipped = 0
 
   const toSave = []
@@ -213,14 +205,6 @@ export async function confirmImport(
           ? { ...t, categoryId: refundCategoryId }
           : t,
       )
-      console.log(
-        '[confirmImport] normalizedPdfRows going into savePersonalBatch (BEFORE):',
-        JSON.stringify(normalizedPdfRows.map((t) => ({
-          externalId: t.raw.externalId,
-          description: t.raw.description,
-          metadata: t.raw.metadata,
-        }))),
-      )
 
       // Billing month: use the explicit targetMonth from the URL when provided,
       // otherwise fall back to the latest transaction date in the statement.
@@ -239,7 +223,6 @@ export async function confirmImport(
       if (pdfResult.conflictMonth) {
         conflictMonth = pdfResult.conflictMonth
       }
-      console.log('[confirmImport] savePersonalBatch result (AFTER):', JSON.stringify(pdfResult))
 
       // Auto-split recurring bills recognized via keywords registered in
       // Settings > Contas fixas compartilhadas — mirror into the household ledger
@@ -251,10 +234,6 @@ export async function confirmImport(
         .map((ir) => ({ ir, row: pdfReviewRowsByExternalId.get(ir.externalId) }))
         .filter((x): x is { ir: { id: string; externalId: string }; row: ReviewRow } =>
           !!x.row?.isSharedBill && !x.row.isFullyReimbursed && x.row.amountCents > 0)
-      console.log(
-        '[confirmImport] sharedBillInserts to mirror into household ledger (AFTER):',
-        JSON.stringify(sharedBillInserts),
-      )
 
       await Promise.all(
         sharedBillInserts.map(({ ir, row }) =>

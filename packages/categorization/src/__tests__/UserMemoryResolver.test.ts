@@ -62,4 +62,19 @@ describe('UserMemoryResolver', () => {
     await resolver.resolve(makeTx('Test Description'))
     expect(capturedArgs).toEqual(['hh-abc', 'user-xyz', 'Test Description'])
   })
+
+  it('strips the installment counter before matching, so later installments of the same purchase still hit', async () => {
+    let capturedPattern: string | null = null
+    const repo: CategoryMemoryRepository = {
+      findByPattern: async (_hh, _owner, pattern) => {
+        capturedPattern = pattern
+        return makeMemoryRow('gifts-id', 1.0)
+      },
+      save: async () => {},
+    }
+    const resolver = new UserMemoryResolver(repo, 'hh-1', 'user-1')
+    const result = await resolver.resolve(makeTx('AMAZON.COM.BR 03/12'))
+    expect(capturedPattern).toBe('AMAZON.COM.BR')
+    expect(result!.categoryId).toBe('gifts-id')
+  })
 })

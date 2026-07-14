@@ -24,8 +24,10 @@ export async function buildCategoryResolver(
   }))
 
   return new ChainCategoryResolver([
-    new RuleBasedResolver(resolvedRules),
+    // User corrections must outrank generic keyword rules — otherwise a rule match
+    // (confidence 1.0) always shadows a memorized correction for the same merchant.
     new UserMemoryResolver(new SupabaseCategoryMemoryRepository(), householdId as string, ownerId as string),
+    new RuleBasedResolver(resolvedRules),
     new DefaultResolver(otherCategoryId as string),
   ])
 }
