@@ -53,7 +53,7 @@ export type { IncomeRepository } from './ports/IncomeRepository.js'
 export type { InvestmentRepository } from './ports/InvestmentRepository.js'
 export type { HouseholdRepository } from './ports/HouseholdRepository.js'
 export type { UserRepository, UserProfile } from './ports/UserRepository.js'
-export type { CategoryRepository, CategoryRow } from './ports/CategoryRepository.js'
+export type { CategoryRepository, CategoryRow, NewCategoryInput } from './ports/CategoryRepository.js'
 export type { GoalRepository } from './ports/GoalRepository.js'
 
 // Use cases

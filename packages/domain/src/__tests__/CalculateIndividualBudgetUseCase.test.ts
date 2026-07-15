@@ -140,6 +140,7 @@ function makeRepos({
     categoryRepo: {
       findAll: async () => [],
       findById: async () => null,
+      create: async () => { throw new Error('not implemented') },
     },
   }
 }

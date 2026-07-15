@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { headers } from 'next/headers'
-import { Target, Wifi, Users, SplitSquareHorizontal } from 'lucide-react'
+import { Target, Wifi, Users, SplitSquareHorizontal, Tag } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
 import { toUserId } from '@splitwise/domain'
@@ -118,6 +118,22 @@ export default async function SettingsPage() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Conecte sua conta bancária para importação automática.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/dashboard/settings/categories" className="group">
+          <Card className="h-full transition-colors group-hover:bg-accent">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Tag className="h-4 w-4" />
+                Categorias
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Crie categorias personalizadas para o seu lar.
               </p>
             </CardContent>
           </Card>

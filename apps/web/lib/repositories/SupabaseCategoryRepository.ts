@@ -6,6 +6,7 @@ import {
   type CategoryRepository,
   type CategoryRow,
   type HouseholdId,
+  type NewCategoryInput,
 } from '@splitwise/domain'
 
 export class SupabaseCategoryRepository implements CategoryRepository {
@@ -38,6 +39,31 @@ export class SupabaseCategoryRepository implements CategoryRepository {
       .maybeSingle()
 
     if (error ?? !data) return null
+    return {
+      id: toCategoryId(data.id),
+      name: data.name,
+      budgetBucket: data.budget_bucket,
+      defaultSplitRule: data.default_split_rule,
+      householdId: data.household_id ? toHouseholdId(data.household_id) : null,
+    }
+  }
+
+  // RLS (categories_insert) restricts this to the household owner — see ADR/CLAUDE.md §4.2.
+  async create(input: NewCategoryInput): Promise<CategoryRow> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({
+        household_id: input.householdId,
+        name: input.name,
+        budget_bucket: input.budgetBucket,
+        default_split_rule: input.defaultSplitRule,
+        is_template: false,
+      })
+      .select('*')
+      .single()
+
+    if (error) throw new Error(`Failed to create category: ${error.message}`)
     return {
       id: toCategoryId(data.id),
       name: data.name,
