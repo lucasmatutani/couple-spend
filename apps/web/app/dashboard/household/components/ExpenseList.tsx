@@ -107,7 +107,6 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Data</TableHead>
               <TableHead>Descrição</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Divisão</TableHead>
@@ -128,7 +127,6 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
                 variants={rowVariants}
                 className="border-b transition-colors hover:bg-muted/50"
               >
-                <TableCell className="whitespace-nowrap">{expense.occurredAt}</TableCell>
                 <TableCell>
                   <span className="flex items-center gap-1.5">
                     {expense.recurringExpenseId && (

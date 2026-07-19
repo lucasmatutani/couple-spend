@@ -5,11 +5,10 @@ import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHousehol
 import { SupabaseUserRepository } from '@/lib/repositories/SupabaseUserRepository'
 import { getHouseholdSplitUseCase } from '@/lib/container'
 import { YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
-import type { CategoryDto, ExpenseDto, MemberBalanceDto, RecurringExpenseDto, SettlementDto } from './types'
+import type { CategoryDto, ExpenseDto, MemberBalanceDto, RecurringExpenseDto } from './types'
 import AddExpenseSheet from './components/AddExpenseSheet'
 import ExpenseList from './components/ExpenseList'
 import RecurringExpensesSheet from './components/RecurringExpensesSheet'
-import SettlementSuggestions from './components/SettlementSuggestions'
 import SplitSummaryCards from './components/SplitSummaryCards'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageTransition } from '@/components/ui/animated'
@@ -77,15 +76,6 @@ export default async function HouseholdPage({
     sharedShareFormatted: b.sharedShare.format(),
     netFormatted: b.net.format(),
     netCents: b.net.cents,
-  }))
-
-  const settlements: SettlementDto[] = summary.settlements.map((s) => ({
-    from: s.from,
-    fromDisplayName: s.fromDisplayName,
-    to: s.to,
-    toDisplayName: s.toDisplayName,
-    amountFormatted: s.amount.format(),
-    amountCents: s.amount.cents,
   }))
 
   const rows = expenseRows.data ?? []
@@ -189,12 +179,6 @@ export default async function HouseholdPage({
               </p>
             </CardContent>
           </Card>
-        </div>
-      )}
-
-      {settlements.length > 0 && (
-        <div className="max-w-2xl">
-          <SettlementSuggestions settlements={settlements} month={month.toString()} />
         </div>
       )}
 
