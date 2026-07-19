@@ -13,25 +13,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { createCategory } from './actions'
-
-const BUCKET_OPTIONS = [
-  { value: 'needs', label: 'Necessidades' },
-  { value: 'wants', label: 'Desejos' },
-  { value: 'savings', label: 'Investimentos/Poupança' },
-]
-
-const SPLIT_OPTIONS = [
-  { value: 'EQUAL', label: 'Dividir igualmente' },
-  { value: 'ONLY_PAYER', label: 'Só quem pagou' },
-  { value: 'ONLY_OTHER', label: 'Só o outro membro' },
-  { value: 'CUSTOM', label: 'Percentual customizado' },
-]
+import { BUCKET_OPTIONS, SPLIT_OPTIONS } from './categoryOptions'
 
 export default function CreateCategoryForm() {
   const router = useRouter()
   const [name, setName] = useState('')
   const [budgetBucket, setBudgetBucket] = useState('needs')
   const [defaultSplitRule, setDefaultSplitRule] = useState('EQUAL')
+  const [keywordsHint, setKeywordsHint] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,7 +29,12 @@ export default function CreateCategoryForm() {
     setLoading(true)
     setError(null)
 
-    const result = await createCategory({ name, budgetBucket, defaultSplitRule })
+    const result = await createCategory({
+      name,
+      budgetBucket,
+      defaultSplitRule,
+      keywordsHint: keywordsHint || null,
+    })
     setLoading(false)
 
     if (!result.success) {
@@ -51,6 +45,7 @@ export default function CreateCategoryForm() {
     setName('')
     setBudgetBucket('needs')
     setDefaultSplitRule('EQUAL')
+    setKeywordsHint('')
     router.refresh()
   }
 
@@ -92,6 +87,21 @@ export default function CreateCategoryForm() {
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="category-hint">Dicas para a IA (opcional)</Label>
+        <Input
+          id="category-hint"
+          value={keywordsHint}
+          onChange={(e) => setKeywordsHint(e.target.value)}
+          maxLength={300}
+          placeholder="Ex.: Petz, Cobasi, veterinário, pet shop"
+        />
+        <p className="text-xs text-muted-foreground">
+          Nomes de lojas/palavras-chave que ajudam a IA a categorizar essa despesa
+          automaticamente ao importar uma fatura.
+        </p>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

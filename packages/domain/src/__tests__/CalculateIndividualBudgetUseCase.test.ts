@@ -141,6 +141,8 @@ function makeRepos({
       findAll: async () => [],
       findById: async () => null,
       create: async () => { throw new Error('not implemented') },
+      update: async () => { throw new Error('not implemented') },
+      delete: async () => { throw new Error('not implemented') },
     },
   }
 }

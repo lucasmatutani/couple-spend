@@ -6,19 +6,8 @@ import { toHouseholdId, toUserId } from '@splitwise/domain'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import CreateCategoryForm from './CreateCategoryForm'
-
-const BUCKET_LABELS: Record<string, string> = {
-  needs: 'Necessidades',
-  wants: 'Desejos',
-  savings: 'Investimentos/Poupança',
-}
-
-const SPLIT_LABELS: Record<string, string> = {
-  EQUAL: 'Dividir igualmente',
-  ONLY_PAYER: 'Só quem pagou',
-  ONLY_OTHER: 'Só o outro membro',
-  CUSTOM: 'Percentual customizado',
-}
+import CategoryList from './CategoryList'
+import { BUCKET_LABELS, SPLIT_LABELS } from './categoryOptions'
 
 export default async function CategoriesSettingsPage() {
   const supabase = await createClient()
@@ -27,12 +16,11 @@ export default async function CategoriesSettingsPage() {
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const household = await new SupabaseHouseholdRepository().findFirstByMember(toUserId(user.id))
+  const userId = toUserId(user.id)
+  const household = await new SupabaseHouseholdRepository().findFirstByMember(userId)
   if (!household) redirect('/onboarding')
 
-  const isOwner = household.members.some(
-    (m) => (m.userId as string) === user.id && m.role === 'owner',
-  )
+  const isOwner = household.isOwner(userId)
 
   const categories = await new SupabaseCategoryRepository().findAll(toHouseholdId(household.id as string))
   const customCategories = categories.filter((c) => c.householdId !== null)
@@ -55,15 +43,27 @@ export default async function CategoriesSettingsPage() {
             <CardTitle className="text-base">Categorias do seu lar</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {customCategories.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0">
-                <p className="text-sm font-medium">{c.name}</p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{BUCKET_LABELS[c.budgetBucket]}</Badge>
-                  <Badge variant="outline">{SPLIT_LABELS[c.defaultSplitRule]}</Badge>
+            {isOwner ? (
+              <CategoryList
+                categories={customCategories.map((c) => ({
+                  id: c.id as string,
+                  name: c.name,
+                  budgetBucket: c.budgetBucket,
+                  defaultSplitRule: c.defaultSplitRule,
+                  keywordsHint: c.keywordsHint,
+                }))}
+              />
+            ) : (
+              customCategories.map((c) => (
+                <div key={c.id} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0">
+                  <p className="text-sm font-medium">{c.name}</p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{BUCKET_LABELS[c.budgetBucket]}</Badge>
+                    <Badge variant="outline">{SPLIT_LABELS[c.defaultSplitRule]}</Badge>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       )}

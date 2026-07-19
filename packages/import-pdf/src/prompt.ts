@@ -1,6 +1,7 @@
 export interface CategoryDef {
   id: string
   name: string
+  keywordsHint?: string | null
 }
 
 const CATEGORY_HINTS: Record<string, string> = {
@@ -57,7 +58,9 @@ export function buildUnifiedPrompt(
 ): string {
   const categoryList = categories
     .map((c) => {
-      const hint = CATEGORY_HINTS[c.name] ?? c.name.toLowerCase()
+      // Household-defined hint takes priority — the user knows their own merchants
+      // better than the hardcoded hints below, which only cover the global templates.
+      const hint = c.keywordsHint?.trim() || CATEGORY_HINTS[c.name] || c.name.toLowerCase()
       return `  - "${c.name}" (id: ${c.id}): ${hint}`
     })
     .join('\n')

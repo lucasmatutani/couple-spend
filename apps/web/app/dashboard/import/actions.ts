@@ -88,7 +88,7 @@ export async function processImport(formData: FormData): Promise<ProcessResult> 
   const useCase = new ImportTransactionsUseCase(dryRunRepo, resolver, defaultPolicy, systemClock)
 
   const allCategories = await new SupabaseCategoryRepository().findAll(toHouseholdId(householdId))
-  const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name }))
+  const categoryDefs = allCategories.map((c) => ({ id: c.id as string, name: c.name, keywordsHint: c.keywordsHint }))
 
   const { sharedBillKeywords, fullRefundKeywords } = await getKeywordsByKind(supabase, ownerId)
   const source = getPdfSource(buffer, categoryDefs, sharedBillKeywords, fullRefundKeywords)

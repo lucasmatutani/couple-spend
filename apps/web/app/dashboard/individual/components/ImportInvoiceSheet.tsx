@@ -238,7 +238,7 @@ export default function ImportInvoiceDialog({ currentMonth, trigger }: Props) {
           <div className="flex flex-col items-center justify-center gap-4 py-12">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-muted-foreground text-center">
-              Lendo fatura com IA… Isso pode levar até 15 segundos.
+              Lendo fatura…
             </p>
           </div>
         )}
