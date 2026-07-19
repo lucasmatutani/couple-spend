@@ -13,20 +13,22 @@ const addSchema = z.object({
   amountCents: z.number().int().positive(),
   description: z.string().min(1),
   installmentCount: z.number().int().min(1).nullable(),
+  startMonth: z.string().regex(/^\d{4}-\d{2}$/),
 })
 
-function monthsToGenerate(installmentCount: number | null): { year: number; month: number }[] {
-  const now = new Date()
+function monthsToGenerate(startMonth: string, installmentCount: number | null): { year: number; month: number }[] {
+  const [startYearStr, startMonthStr] = startMonth.split('-') as [string, string]
+  const startYear = parseInt(startYearStr, 10)
+  const startMonthIndex = parseInt(startMonthStr, 10) - 1
   const result = []
   if (installmentCount !== null) {
     for (let i = 0; i < installmentCount; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      const d = new Date(startYear, startMonthIndex + i, 1)
       result.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
     }
   } else {
-    const currentYear = now.getFullYear()
-    for (let m = now.getMonth(); m <= 11; m++) {
-      result.push({ year: currentYear, month: m + 1 })
+    for (let m = startMonthIndex; m <= 11; m++) {
+      result.push({ year: startYear, month: m + 1 })
     }
   }
   return result
@@ -60,7 +62,7 @@ export async function addRecurringPersonalExpense(input: unknown): Promise<Actio
   // 2. Auto-generate one entry per month
   const repo = getPersonalExpenseRepository()
 
-  for (const { year, month } of monthsToGenerate(d.installmentCount ?? null)) {
+  for (const { year, month } of monthsToGenerate(d.startMonth, d.installmentCount ?? null)) {
     const mm = String(month).padStart(2, '0')
     const occurredAt = new Date(`${year}-${mm}-01T12:00:00`)
     const expense = PersonalExpense.create({

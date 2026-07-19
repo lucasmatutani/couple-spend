@@ -110,6 +110,7 @@ export default function RecurringPersonalExpensesSheet({
       amountCents: parseBrl(f.amountBrl),
       description: f.description.trim(),
       installmentCount: parsedInstallments,
+      startMonth: currentMonth,
     })
     setFormLoading(false)
     if (result.success) {
