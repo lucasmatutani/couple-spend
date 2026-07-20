@@ -63,6 +63,85 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   )
 }
 
+const SOURCE_BADGE_CLASS: Record<ExpenseItem['source'], string> = {
+  casa: 'text-amber-600 border-amber-200',
+  pessoal: 'text-violet-600 border-violet-200',
+}
+
+const SOURCE_CHIP_ACTIVE_CLASS: Record<ExpenseItem['source'], string> = {
+  casa: 'bg-amber-500 text-white border-amber-500',
+  pessoal: 'bg-violet-500 text-white border-violet-500',
+}
+
+function PieModalBody({ slice }: { slice: PieSlice }) {
+  const [filter, setFilter] = useState<ExpenseItem['source'] | null>(null)
+  const sources = Array.from(new Set(slice.items.map((i) => i.source)))
+  const visibleItems = filter ? slice.items.filter((i) => i.source === filter) : slice.items
+  const visibleSum = filter ? visibleItems.reduce((s, i) => s + i.effectiveCents, 0) : slice.value
+
+  return (
+    <>
+      {sources.length > 1 && (
+        <div className="flex flex-wrap gap-1.5 pb-3">
+          <button
+            type="button"
+            onClick={() => setFilter(null)}
+            className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${
+              filter === null ? 'bg-foreground text-background border-foreground' : 'text-muted-foreground'
+            }`}
+          >
+            Todas
+          </button>
+          {sources.map((source) => {
+            const active = filter === source
+            return (
+              <button
+                key={source}
+                type="button"
+                onClick={() => setFilter(active ? null : source)}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors ${
+                  active ? SOURCE_CHIP_ACTIVE_CLASS[source] : SOURCE_BADGE_CLASS[source]
+                }`}
+              >
+                {source}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-sm border-b pb-3 mb-1">
+        <span className="text-muted-foreground">
+          {visibleItems.length} lançamento{visibleItems.length !== 1 ? 's' : ''}
+        </span>
+        <span className="font-semibold">{fmt(visibleSum)}</span>
+      </div>
+
+      <div className="overflow-y-auto flex-1 space-y-1 pr-1">
+        {visibleItems.map((item, i) => (
+          <div
+            key={i}
+            className="flex items-start justify-between gap-3 rounded-md px-2 py-2 hover:bg-muted/40"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-sm truncate">{item.description ?? '—'}</p>
+              <Badge variant="outline" className={`text-xs py-0 px-1.5 mt-1 ${SOURCE_BADGE_CLASS[item.source]}`}>
+                {item.source}
+              </Badge>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-medium">{fmt(item.effectiveCents)}</p>
+              {item.effectiveCents !== item.amountCents && (
+                <p className="text-xs text-muted-foreground line-through">{fmt(item.amountCents)}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 export default function ExpensePieChart({ data }: { data: PieSlice[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [selected, setSelected] = useState<PieSlice | null>(null)
@@ -94,42 +173,7 @@ export default function ExpensePieChart({ data }: { data: PieSlice[] }) {
               </DialogTitle>
             </DialogHeader>
 
-            <div className="flex items-center justify-between text-sm border-b pb-3 mb-1">
-              <span className="text-muted-foreground">{selected.items.length} lançamento{selected.items.length !== 1 ? 's' : ''}</span>
-              <span className="font-semibold">{fmt(selected.value)}</span>
-            </div>
-
-            <div className="overflow-y-auto flex-1 space-y-1 pr-1">
-              {selected.items.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-start justify-between gap-3 rounded-md px-2 py-2 hover:bg-muted/40"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm truncate">{item.description ?? '—'}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <p className="text-xs text-muted-foreground">{item.occurredAt}</p>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs py-0 px-1.5 ${
-                          item.source === 'casa'
-                            ? 'text-amber-600 border-amber-200'
-                            : 'text-violet-600 border-violet-200'
-                        }`}
-                      >
-                        {item.source}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-medium">{fmt(item.effectiveCents)}</p>
-                    {item.effectiveCents !== item.amountCents && (
-                      <p className="text-xs text-muted-foreground line-through">{fmt(item.amountCents)}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PieModalBody slice={selected} />
           </DialogContent>
         )}
       </Dialog>

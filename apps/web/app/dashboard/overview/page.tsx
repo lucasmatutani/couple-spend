@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryRepository'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
-import { getIndividualBudgetUseCase } from '@/lib/container'
+import { getIndividualBudgetUseCase, getInvestmentRepository } from '@/lib/container'
 import { YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
 import {
   TrendingUp, TrendingDown, Minus,
@@ -11,6 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import MonthNavigator from '../components/MonthNavigator'
 import ExpensePieChart, { type PieSlice } from './components/ExpensePieChart'
+import BudgetAllocationCard, { type AllocationItem } from './components/BudgetAllocationCard'
 
 function fmt(cents: number): string {
   return `R$ ${(Math.abs(cents) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
@@ -26,6 +27,13 @@ function prevMonthYM(month: YearMonth): YearMonth {
   return YearMonth.fromString(
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
   )
+}
+
+const ASSET_CLASS_LABELS: Record<string, string> = {
+  stocks: 'Ações',
+  fixed_income: 'Renda Fixa',
+  real_estate: 'FIIs',
+  crypto: 'Cripto',
 }
 
 function buildSavingsInsight(invested3mCents: number, saved3mCents: number): string {
@@ -77,12 +85,13 @@ export default async function OverviewPage({
   const realPrev = prevMonthYM(realCurrentMonth)
   const realPrev2 = prevMonthYM(realPrev)
 
-  const [summary, prevSummary, insightCurrent, insightPrev1, insightPrev2, categories, expenseRows, peRows] = await Promise.all([
+  const [summary, prevSummary, insightCurrent, insightPrev1, insightPrev2, rawInvestments, categories, expenseRows, peRows] = await Promise.all([
     getIndividualBudgetUseCase().execute(userId, month),
     getIndividualBudgetUseCase().execute(userId, prev),
     getIndividualBudgetUseCase().execute(userId, realCurrentMonth),
     getIndividualBudgetUseCase().execute(userId, realPrev),
     getIndividualBudgetUseCase().execute(userId, realPrev2),
+    getInvestmentRepository().findByOwnerAndMonth(userId, month),
     new SupabaseCategoryRepository().findAll(householdId),
     supabase
       .from('expenses')
@@ -104,6 +113,8 @@ export default async function OverviewPage({
   let sharedShareCents = 0
   const householdByCat = new Map<string, number>()
   const itemsByCat = new Map<string, import('./components/ExpensePieChart').ExpenseItem[]>()
+  const householdItems: AllocationItem[] = []
+  const personalItems: AllocationItem[] = []
 
   function addItem(catKey: string, item: import('./components/ExpensePieChart').ExpenseItem) {
     const list = itemsByCat.get(catKey) ?? []
@@ -134,6 +145,13 @@ export default async function OverviewPage({
       effectiveCents: share,
       source: 'casa',
     })
+    householdItems.push({
+      description: r.description ?? null,
+      occurredAt: r.occurred_at,
+      amountCents: r.amount_cents,
+      effectiveCents: share,
+      category: name,
+    })
   }
 
   const personalSpentCents = summary.totalSpent.cents - sharedShareCents
@@ -154,7 +172,27 @@ export default async function OverviewPage({
       effectiveCents: effective,
       source: 'pessoal',
     })
+    personalItems.push({
+      description: r.description ?? null,
+      occurredAt: r.occurred_at,
+      amountCents: r.amount_cents,
+      effectiveCents: effective,
+      category: name,
+    })
   }
+
+  householdItems.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+  personalItems.sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+
+  const investmentItems: AllocationItem[] = rawInvestments
+    .map((i) => ({
+      description: i.description,
+      occurredAt: i.occurredAt.toISOString().split('T')[0]!,
+      amountCents: i.amount.cents,
+      effectiveCents: i.amount.cents,
+      category: ASSET_CLASS_LABELS[i.assetClass] ?? i.assetClass,
+    }))
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
 
   const pieData: PieSlice[] = Array.from(allByCat.entries())
     .sort((a, b) => b[1] - a[1])
@@ -353,32 +391,17 @@ export default async function OverviewPage({
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Para onde vai a renda</CardTitle>
+          <p className="text-sm text-muted-foreground">Clique em uma categoria para ver os lançamentos</p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {[
-            { label: 'Pessoal', value: personalSpentCents, pctVal: barPersonal, color: 'bg-violet-500' },
-            { label: 'Casa (minha parte)', value: sharedShareCents, pctVal: barHousehold, color: 'bg-amber-500' },
-            { label: 'Investimentos', value: invested, pctVal: barInvested, color: 'bg-blue-500' },
-            { label: 'Saldo livre', value: surplus, pctVal: barSurplus, color: surplus >= 0 ? 'bg-green-500' : 'bg-destructive' },
-          ].map(({ label, value, pctVal, color }) => (
-            <div key={label} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{label}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">{pct(Math.abs(pctVal))}</span>
-                  <span className="font-medium tabular-nums w-28 text-right">
-                    {value < 0 ? '-' : ''}{fmt(value)}
-                  </span>
-                </div>
-              </div>
-              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${color} transition-all`}
-                  style={{ width: `${Math.min(Math.abs(pctVal) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          ))}
+        <CardContent>
+          <BudgetAllocationCard
+            rows={[
+              { label: 'Pessoal', value: personalSpentCents, pctVal: barPersonal, color: 'bg-violet-500', items: personalItems },
+              { label: 'Casa (minha parte)', value: sharedShareCents, pctVal: barHousehold, color: 'bg-amber-500', items: householdItems },
+              { label: 'Investimentos', value: invested, pctVal: barInvested, color: 'bg-blue-500', items: investmentItems },
+              { label: 'Saldo livre', value: surplus, pctVal: barSurplus, color: surplus >= 0 ? 'bg-green-500' : 'bg-destructive', items: null },
+            ]}
+          />
         </CardContent>
       </Card>
 
