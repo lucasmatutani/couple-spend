@@ -2,13 +2,14 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SupabaseCategoryRepository } from '@/lib/repositories/SupabaseCategoryRepository'
 import { SupabaseHouseholdRepository } from '@/lib/repositories/SupabaseHouseholdRepository'
-import { getIndividualBudgetUseCase, getInvestmentRepository } from '@/lib/container'
-import { Money, YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
+import { getIndividualBudgetUseCase } from '@/lib/container'
+import { YearMonth, toHouseholdId, toUserId } from '@splitwise/domain'
 import {
   TrendingUp, TrendingDown, Minus,
-  Wallet, PiggyBank, ArrowUpCircle, Target,
+  Wallet, PiggyBank, ArrowUpCircle, Target, Sparkles,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import MonthNavigator from '../components/MonthNavigator'
 import ExpensePieChart, { type PieSlice } from './components/ExpensePieChart'
 
 function fmt(cents: number): string {
@@ -25,6 +26,19 @@ function prevMonthYM(month: YearMonth): YearMonth {
   return YearMonth.fromString(
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
   )
+}
+
+function buildSavingsInsight(invested3mCents: number, saved3mCents: number): string {
+  if (saved3mCents > 0 && invested3mCents > 0) {
+    return 'Você fechou os últimos 3 meses no azul e ainda investindo. Continue nesse ritmo — é assim que patrimônio se constrói.'
+  }
+  if (saved3mCents > 0) {
+    return 'Você tem guardado dinheiro nos últimos meses. Que tal transformar parte dessa sobra em investimentos?'
+  }
+  if (invested3mCents > 0) {
+    return 'Mesmo com o orçamento apertado, você seguiu investindo nos últimos meses. Continue priorizando isso.'
+  }
+  return 'Ainda não há sobra nos últimos meses, mas cada real guardado a partir de agora já faz diferença lá na frente.'
 }
 
 export default async function OverviewPage({
@@ -57,9 +71,18 @@ export default async function OverviewPage({
 
   const prev = prevMonthYM(month)
 
-  const [summary, prevSummary, categories, expenseRows, peRows] = await Promise.all([
+  // The consolidated insight cards always look at the real current month,
+  // independent of whichever month is selected via the month navigator below.
+  const realCurrentMonth = YearMonth.current()
+  const realPrev = prevMonthYM(realCurrentMonth)
+  const realPrev2 = prevMonthYM(realPrev)
+
+  const [summary, prevSummary, insightCurrent, insightPrev1, insightPrev2, categories, expenseRows, peRows] = await Promise.all([
     getIndividualBudgetUseCase().execute(userId, month),
     getIndividualBudgetUseCase().execute(userId, prev),
+    getIndividualBudgetUseCase().execute(userId, realCurrentMonth),
+    getIndividualBudgetUseCase().execute(userId, realPrev),
+    getIndividualBudgetUseCase().execute(userId, realPrev2),
     new SupabaseCategoryRepository().findAll(householdId),
     supabase
       .from('expenses')
@@ -156,6 +179,14 @@ export default async function OverviewPage({
     : 0
   const annualProjection = surplus * 12
 
+  // ── Consolidated insights (real current month + prior 2, regardless of the
+  //    month selected below via the navigator) ──────────────────────────────
+  const invested3mCents = insightCurrent.totalInvested.cents + insightPrev1.totalInvested.cents + insightPrev2.totalInvested.cents
+  const avgInvested3mCents = Math.round(invested3mCents / 3)
+  const saved3mCents = insightCurrent.surplus.cents + insightPrev1.surplus.cents + insightPrev2.surplus.cents
+  const avgSaved3mCents = Math.round(saved3mCents / 3)
+  const savingsInsightMessage = buildSavingsInsight(invested3mCents, saved3mCents)
+
   // Budget bars (% of income)
   const barPersonal = income > 0 ? personalSpentCents / income : 0
   const barHousehold = income > 0 ? sharedShareCents / income : 0
@@ -163,8 +194,61 @@ export default async function OverviewPage({
   const barSurplus = income > 0 ? surplus / income : 0
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Visão geral</h2>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold">Visão geral</h2>
+        <p className="text-sm text-muted-foreground">
+          Panorama consolidado dos últimos 3 meses — role para baixo para ver o detalhamento por mês
+        </p>
+      </div>
+
+      {/* ── Insights: consolidado dos últimos 3 meses ───────────────────── */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Investido (últimos 3 meses)</CardTitle>
+            <ArrowUpCircle className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-blue-600">{fmt(invested3mCents)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">média de {fmt(avgInvested3mCents)}/mês</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Guardado (últimos 3 meses)</CardTitle>
+            <PiggyBank className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${saved3mCents >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+              {saved3mCents < 0 ? '-' : ''}{fmt(saved3mCents)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              média de {avgSaved3mCents < 0 ? '-' : ''}{fmt(avgSaved3mCents)}/mês
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30">
+          <CardHeader className="flex flex-row items-center gap-2 pb-2">
+            <Sparkles className="h-4 w-4 text-green-700 dark:text-green-400" />
+            <CardTitle className="text-sm font-medium text-green-800 dark:text-green-300">Continue assim</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-green-900 dark:text-green-200">{savingsInsightMessage}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Detalhamento por mês ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between border-t pt-6">
+        <div>
+          <h3 className="text-lg font-semibold">Detalhamento do mês</h3>
+          <p className="text-sm text-muted-foreground">Escolha um mês para ver os números em detalhe</p>
+        </div>
+        <MonthNavigator alwaysShow />
+      </div>
 
       {/* ── Row 1: Saldo + Taxa de poupança ─────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2">

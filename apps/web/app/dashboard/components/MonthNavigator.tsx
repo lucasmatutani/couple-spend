@@ -25,11 +25,15 @@ function formatMonth(ym: string): string {
   return `${MONTHS[parseInt(m, 10) - 1]!} ${y}`
 }
 
-export default function MonthNavigator() {
+export default function MonthNavigator({ alwaysShow = false }: { alwaysShow?: boolean }) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
   const month = searchParams.get('month') ?? currentMonthString()
+
+  // The overview page renders its own MonthNavigator further down the page
+  // (below the consolidated insights), so the header instance stays hidden there.
+  if (!alwaysShow && pathname.startsWith('/dashboard/overview')) return null
 
   function navigate(delta: number) {
     const params = new URLSearchParams(searchParams.toString())
