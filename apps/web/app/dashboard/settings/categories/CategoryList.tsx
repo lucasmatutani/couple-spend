@@ -5,27 +5,16 @@ import { useRouter } from 'next/navigation'
 import { Pencil, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { updateCategory, deleteCategory } from './actions'
-import { SPLIT_OPTIONS, SPLIT_LABELS } from './categoryOptions'
 
 export type CategoryDto = {
   id: string
   name: string
-  defaultSplitRule: string
   keywordsHint: string | null
 }
 
 type EditState = {
   name: string
-  defaultSplitRule: string
   keywordsHint: string
   saving: boolean
   error: string | null
@@ -43,7 +32,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
     setEditingId(c.id)
     setEditState({
       name: c.name,
-      defaultSplitRule: c.defaultSplitRule,
       keywordsHint: c.keywordsHint ?? '',
       saving: false,
       error: null,
@@ -65,7 +53,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
     const result = await updateCategory({
       id,
       name: editState.name,
-      defaultSplitRule: editState.defaultSplitRule,
       keywordsHint: editState.keywordsHint || null,
     })
     if (!result.success) {
@@ -106,17 +93,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
                 maxLength={60}
                 onChange={(e) => setEditState((s) => s && ({ ...s, name: e.target.value }))}
               />
-              <Select
-                value={editState.defaultSplitRule}
-                onValueChange={(v) => setEditState((s) => s && ({ ...s, defaultSplitRule: v }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {SPLIT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <Input
                 value={editState.keywordsHint}
                 maxLength={300}
@@ -142,7 +118,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
           <div key={c.id} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0 group">
             <p className="text-sm font-medium">{c.name}</p>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">{SPLIT_LABELS[c.defaultSplitRule]}</Badge>
               <Button
                 size="icon"
                 variant="ghost"

@@ -35,7 +35,6 @@ export type ExpenseDto = {
 export type CategoryDto = {
   id: string
   name: string
-  defaultSplitRule: string
 }
 
 export type RecurringExpenseDto = {

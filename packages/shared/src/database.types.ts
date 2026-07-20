@@ -36,7 +36,6 @@ export type Database = {
     Tables: {
       categories: {
         Row: {
-          default_split_rule: Database["public"]["Enums"]["split_rule_type"]
           household_id: string | null
           id: string
           is_template: boolean
@@ -45,7 +44,6 @@ export type Database = {
           parent_id: string | null
         }
         Insert: {
-          default_split_rule?: Database["public"]["Enums"]["split_rule_type"]
           household_id?: string | null
           id?: string
           is_template?: boolean
@@ -54,7 +52,6 @@ export type Database = {
           parent_id?: string | null
         }
         Update: {
-          default_split_rule?: Database["public"]["Enums"]["split_rule_type"]
           household_id?: string | null
           id?: string
           is_template?: boolean

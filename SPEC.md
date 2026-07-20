@@ -532,7 +532,6 @@ create table categories (
   household_id    uuid references households(id),  -- null = global template
   parent_id       uuid references categories(id),
   name            text not null,
-  default_split_rule text not null,
   is_template     boolean not null default false
 );
 
@@ -991,29 +990,29 @@ splitwise/
 
 ### 15.1 Default category templates (global seed)
 
-| Category           | Default split rule |
-| ------------------ | ------------------ |
-| Housing            | EQUAL              |
-| Utilities          | EQUAL              |
-| Groceries          | EQUAL              |
-| Food               | EQUAL              |
-| Transport          | EQUAL              |
-| Health             | EQUAL              |
-| Education          | EQUAL              |
-| Subscriptions      | (varies)           |
-| Entertainment      | (individual)       |
-| Clothing           | (individual)       |
-| Dining out         | EQUAL              |
-| Investments        | n/a (not expense)  |
-| Refunds            | n/a                |
-| Other              | (unset)             |
+- Housing
+- Utilities
+- Groceries
+- Food
+- Transport
+- Health
+- Education
+- Subscriptions
+- Entertainment
+- Clothing
+- Dining out
+- Investments
+- Refunds
+- Other
 
 These are **templates** seeded globally. Each household can create custom sub-categories (e.g. `Education > Daycare`, `Health > Gym`).
 
 The "Investments" template category is a historical leftover with zero expense
 rows referencing it — real investments are tracked via the separate
 Investments feature (`investments` table), not as a personal-expense
-category. Categories no longer carry a budget classification at all
+category. Categories no longer carry a budget classification
 (`budget_bucket` was removed in migration 024, along with the `MAX_NEEDS`/
-`MAX_WANTS` goal types it fed) — consider removing this template entirely if
-it keeps causing confusion.
+`MAX_WANTS` goal types it fed) nor a default split rule
+(`default_split_rule` was removed in migration 026 — it was stored but never
+read to prefill an expense's actual split) — consider removing this template
+entirely if it keeps causing confusion.

@@ -12,7 +12,6 @@ type ActionResult = { success: true } | { success: false; error: string }
 
 const categoryFieldsSchema = {
   name: z.string().trim().min(1, 'Nome obrigatório').max(60),
-  defaultSplitRule: z.enum(['EQUAL', 'ONLY_PAYER', 'ONLY_OTHER', 'CUSTOM']),
   keywordsHint: z.string().trim().max(300).nullable().optional(),
 }
 
@@ -48,7 +47,6 @@ export async function createCategory(input: unknown): Promise<ActionResult> {
     await new SupabaseCategoryRepository().create({
       householdId: toHouseholdId(check.household.id as string),
       name: parsed.data.name,
-      defaultSplitRule: parsed.data.defaultSplitRule,
       keywordsHint: parsed.data.keywordsHint || null,
     })
   } catch {
@@ -78,7 +76,6 @@ export async function updateCategory(input: unknown): Promise<ActionResult> {
   try {
     await repo.update(categoryId, {
       name: parsed.data.name,
-      defaultSplitRule: parsed.data.defaultSplitRule,
       keywordsHint: parsed.data.keywordsHint || null,
     })
   } catch {

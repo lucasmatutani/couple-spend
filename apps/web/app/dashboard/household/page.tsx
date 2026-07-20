@@ -98,7 +98,6 @@ export default async function HouseholdPage({
   const categoryDtos: CategoryDto[] = categories.map((c) => ({
     id: c.id,
     name: c.name,
-    defaultSplitRule: c.defaultSplitRule,
   }))
 
   const recurringDtos: RecurringExpenseDto[] = (recurringTemplates.data ?? []).map((r) => ({

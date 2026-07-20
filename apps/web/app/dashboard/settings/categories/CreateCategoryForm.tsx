@@ -5,20 +5,11 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { createCategory } from './actions'
-import { SPLIT_OPTIONS } from './categoryOptions'
 
 export default function CreateCategoryForm() {
   const router = useRouter()
   const [name, setName] = useState('')
-  const [defaultSplitRule, setDefaultSplitRule] = useState('EQUAL')
   const [keywordsHint, setKeywordsHint] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +21,6 @@ export default function CreateCategoryForm() {
 
     const result = await createCategory({
       name,
-      defaultSplitRule,
       keywordsHint: keywordsHint || null,
     })
     setLoading(false)
@@ -41,7 +31,6 @@ export default function CreateCategoryForm() {
     }
 
     setName('')
-    setDefaultSplitRule('EQUAL')
     setKeywordsHint('')
     router.refresh()
   }
@@ -58,18 +47,6 @@ export default function CreateCategoryForm() {
           placeholder="Ex.: Pet, Presentes, Academia"
           required
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Divisão padrão</Label>
-        <Select value={defaultSplitRule} onValueChange={setDefaultSplitRule}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {SPLIT_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="space-y-2">
