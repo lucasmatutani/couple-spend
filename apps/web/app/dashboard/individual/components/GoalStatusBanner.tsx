@@ -2,8 +2,6 @@ import type { GoalEvaluation, GoalType } from '@splitwise/domain'
 import { Money } from '@splitwise/domain'
 
 const GOAL_LABELS: Record<GoalType, string> = {
-  MAX_NEEDS: 'Gastos com necessidades',
-  MAX_WANTS: 'Gastos com desejos',
   MIN_SAVINGS: 'Meta de investimentos',
   MIN_SURPLUS: 'Meta de sobra',
 }
@@ -41,7 +39,7 @@ export default function GoalStatusBanner({ evaluations, totalIncomeCents }: Prop
             key={ev.goal.id as string}
             className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
-            ✕ {label} — limite de {targetPct}% {ev.goal.goalType.startsWith('MAX_') ? 'excedido' : 'não atingido'} em{' '}
+            ✕ {label} — meta de {targetPct}% não atingida em{' '}
             {Money.of(diffCents).format()}
           </div>
         )

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import CreateCategoryForm from './CreateCategoryForm'
 import CategoryList from './CategoryList'
-import { BUCKET_LABELS, SPLIT_LABELS } from './categoryOptions'
+import { SPLIT_LABELS } from './categoryOptions'
 
 export default async function CategoriesSettingsPage() {
   const supabase = await createClient()
@@ -48,7 +48,6 @@ export default async function CategoriesSettingsPage() {
                 categories={customCategories.map((c) => ({
                   id: c.id as string,
                   name: c.name,
-                  budgetBucket: c.budgetBucket,
                   defaultSplitRule: c.defaultSplitRule,
                   keywordsHint: c.keywordsHint,
                 }))}
@@ -58,7 +57,6 @@ export default async function CategoriesSettingsPage() {
                 <div key={c.id} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0">
                   <p className="text-sm font-medium">{c.name}</p>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{BUCKET_LABELS[c.budgetBucket]}</Badge>
                     <Badge variant="outline">{SPLIT_LABELS[c.defaultSplitRule]}</Badge>
                   </div>
                 </div>
@@ -92,7 +90,6 @@ export default async function CategoriesSettingsPage() {
             <div key={c.id} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0">
               <p className="text-sm text-muted-foreground">{c.name}</p>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">{BUCKET_LABELS[c.budgetBucket]}</Badge>
                 <Badge variant="outline">{SPLIT_LABELS[c.defaultSplitRule]}</Badge>
               </div>
             </div>

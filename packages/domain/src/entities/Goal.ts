@@ -2,7 +2,7 @@ import { type GoalId, type UserId } from '../kernel/ids.js'
 import { type YearMonth } from '../kernel/YearMonth.js'
 import { InvalidGoalError } from '../errors.js'
 
-export type GoalType = 'MAX_NEEDS' | 'MAX_WANTS' | 'MIN_SAVINGS' | 'MIN_SURPLUS'
+export type GoalType = 'MIN_SAVINGS' | 'MIN_SURPLUS'
 
 export class Goal {
   private constructor(

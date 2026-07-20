@@ -16,7 +16,6 @@ export type PersonalExpenseDto = {
   description: string | null
   categoryId: string
   categoryName: string
-  budgetBucket: 'needs' | 'wants' | 'savings'
   recurringPersonalExpenseId: string | null
   paymentMethod: 'credit_card' | 'debit' | 'pix' | 'cash' | 'other' | null
   splitParts: number
@@ -36,7 +35,6 @@ export type InvestmentDto = {
 export type CategoryDto = {
   id: string
   name: string
-  budgetBucket: 'needs' | 'wants' | 'savings'
 }
 
 export type RecurringPersonalExpenseDto = {

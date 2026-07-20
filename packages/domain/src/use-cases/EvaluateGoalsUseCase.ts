@@ -24,10 +24,6 @@ export class EvaluateGoalsUseCase {
 
   private getActual(goalType: GoalType, budget: IndividualBudgetSummary): number {
     switch (goalType) {
-      case 'MAX_NEEDS':
-        return budget.pctByBucket.needs
-      case 'MAX_WANTS':
-        return budget.pctByBucket.wants
       case 'MIN_SAVINGS':
         return budget.pctInvested
       case 'MIN_SURPLUS': {
@@ -37,16 +33,9 @@ export class EvaluateGoalsUseCase {
     }
   }
 
-  private getStatus(goalType: GoalType, actual: number, target: number): GoalStatus {
-    const isMax = goalType.startsWith('MAX_')
-    if (isMax) {
-      if (actual >= target) return 'exceeded'
-      if (actual >= target * 0.8) return 'at_risk'
-      return 'on_track'
-    } else {
-      if (actual < target) return 'exceeded'
-      if (actual <= target * 1.2) return 'at_risk'
-      return 'on_track'
-    }
+  private getStatus(_goalType: GoalType, actual: number, target: number): GoalStatus {
+    if (actual < target) return 'exceeded'
+    if (actual <= target * 1.2) return 'at_risk'
+    return 'on_track'
   }
 }

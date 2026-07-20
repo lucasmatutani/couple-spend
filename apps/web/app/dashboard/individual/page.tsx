@@ -142,7 +142,6 @@ export default async function IndividualPage({
       description: r.description,
       categoryId: r.category_id,
       categoryName: cat?.name ?? 'Sem categoria',
-      budgetBucket: cat?.budgetBucket ?? 'needs',
       recurringPersonalExpenseId: r.recurring_personal_expense_id,
       paymentMethod: (r.payment_method ?? null) as PersonalExpenseDto['paymentMethod'],
       splitParts: r.split_parts ?? 1,
@@ -163,7 +162,6 @@ export default async function IndividualPage({
   const categoryDtos: CategoryDto[] = categories.map((c) => ({
     id: c.id,
     name: c.name,
-    budgetBucket: c.budgetBucket,
   }))
 
   const recurringPersonalDtos: RecurringPersonalExpenseDto[] = (recurringTemplates.data ?? []).map((r) => ({

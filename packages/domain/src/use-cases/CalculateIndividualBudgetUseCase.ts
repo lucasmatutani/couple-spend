@@ -21,12 +21,6 @@ export type IndividualBudgetSummary = {
   pctSpent: number
   /** 0..1 fraction of income invested */
   pctInvested: number
-  /** 0..1 fraction of income spent per budget bucket (personal expenses only) */
-  pctByBucket: {
-    needs: number
-    wants: number
-    savings: number
-  }
 }
 
 export class CalculateIndividualBudgetUseCase {
@@ -60,17 +54,13 @@ export class CalculateIndividualBudgetUseCase {
     const totalIncomeCents = incomes.reduce((sum, i) => sum + i.amount.cents, 0)
     const totalInvestedCents = investments.reduce((sum, i) => sum + i.amount.cents, 0)
 
-    // Fetch categories to identify refunds and budget buckets.
+    // Fetch categories to identify refunds.
     const firstHousehold = households[0]
     const catRows = firstHousehold ? await this.categoryRepo.findAll(firstHousehold.id) : []
-    const catBuckets = new Map(catRows.map((c) => [c.id as string, c.budgetBucket] as const))
     const refundCategoryId = catRows.find((c) => c.name === 'Reembolsos')?.id as string | undefined
 
     // Refunds (Reembolsos) reduce spending rather than adding to it.
     let personalExpenseCents = 0
-    let bucketNeeds = 0
-    let bucketWants = 0
-    let bucketSavings = 0
     for (const e of personalExpenses) {
       // Already represented as a shared expense in sharedShareCents above — counting
       // it here too would double the user's share (once via owedBy, once via effectiveAmount).
@@ -83,10 +73,6 @@ export class CalculateIndividualBudgetUseCase {
         personalExpenseCents -= effectiveCents
       } else {
         personalExpenseCents += effectiveCents
-        const bucket = catBuckets.get(catId) ?? 'needs'
-        if (bucket === 'needs') bucketNeeds += effectiveCents
-        else if (bucket === 'wants') bucketWants += effectiveCents
-        else bucketSavings += effectiveCents
       }
     }
 
@@ -94,12 +80,6 @@ export class CalculateIndividualBudgetUseCase {
     const surplusCents = totalIncomeCents - totalSpentCents - totalInvestedCents
     const pctSpent = totalIncomeCents > 0 ? totalSpentCents / totalIncomeCents : 0
     const pctInvested = totalIncomeCents > 0 ? totalInvestedCents / totalIncomeCents : 0
-
-    const pctByBucket = {
-      needs: totalIncomeCents > 0 ? bucketNeeds / totalIncomeCents : 0,
-      wants: totalIncomeCents > 0 ? bucketWants / totalIncomeCents : 0,
-      savings: totalIncomeCents > 0 ? bucketSavings / totalIncomeCents : 0,
-    }
 
     return {
       userId,
@@ -110,7 +90,6 @@ export class CalculateIndividualBudgetUseCase {
       surplus: Money.of(surplusCents),
       pctSpent,
       pctInvested,
-      pctByBucket,
     }
   }
 }

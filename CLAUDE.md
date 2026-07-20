@@ -155,10 +155,10 @@ const gastoCompartilhado = ...  // ❌
 
 ```sql
 -- CORRECT
-budget_bucket text check (budget_bucket in ('needs', 'wants', 'savings'))
+goal_type text check (goal_type in ('min_savings', 'min_surplus'))
 
 -- WRONG
-budget_bucket text check (budget_bucket in ('necessidades', 'desejos', 'investimento')) -- ❌
+goal_type text check (goal_type in ('poupanca_minima', 'sobra_minima')) -- ❌
 ```
 
 ### 4.6 Conventional commits
@@ -206,8 +206,7 @@ Valid scopes: `domain`, `shared`, `import-core`, `import-ofx`, `import-csv`, `im
 | Use cases            | `<Verb><Noun>UseCase` | `ImportTransactionsUseCase`   |
 | Ports                | singular noun      | `TransactionSource`, `CategoryResolver` |
 | Adapters             | `<Origin><Type>`   | `OfxFileAdapter`, `SupabaseExpenseRepository` |
-| Enum values          | `SCREAMING_SNAKE`  | `ONLY_PAYER`, `MAX_NEEDS`        |
-| Budget buckets       | `needs`, `wants`, `savings` | (lowercase strings)    |
+| Enum values          | `SCREAMING_SNAKE`  | `ONLY_PAYER`, `MIN_SAVINGS`      |
 
 ### 5.4 Dates and timezone
 

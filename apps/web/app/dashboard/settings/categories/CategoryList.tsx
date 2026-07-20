@@ -14,19 +14,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { updateCategory, deleteCategory } from './actions'
-import { BUCKET_OPTIONS, SPLIT_OPTIONS, BUCKET_LABELS, SPLIT_LABELS } from './categoryOptions'
+import { SPLIT_OPTIONS, SPLIT_LABELS } from './categoryOptions'
 
 export type CategoryDto = {
   id: string
   name: string
-  budgetBucket: string
   defaultSplitRule: string
   keywordsHint: string | null
 }
 
 type EditState = {
   name: string
-  budgetBucket: string
   defaultSplitRule: string
   keywordsHint: string
   saving: boolean
@@ -45,7 +43,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
     setEditingId(c.id)
     setEditState({
       name: c.name,
-      budgetBucket: c.budgetBucket,
       defaultSplitRule: c.defaultSplitRule,
       keywordsHint: c.keywordsHint ?? '',
       saving: false,
@@ -68,7 +65,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
     const result = await updateCategory({
       id,
       name: editState.name,
-      budgetBucket: editState.budgetBucket,
       defaultSplitRule: editState.defaultSplitRule,
       keywordsHint: editState.keywordsHint || null,
     })
@@ -110,30 +106,17 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
                 maxLength={60}
                 onChange={(e) => setEditState((s) => s && ({ ...s, name: e.target.value }))}
               />
-              <div className="grid grid-cols-2 gap-3">
-                <Select
-                  value={editState.budgetBucket}
-                  onValueChange={(v) => setEditState((s) => s && ({ ...s, budgetBucket: v }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {BUCKET_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={editState.defaultSplitRule}
-                  onValueChange={(v) => setEditState((s) => s && ({ ...s, defaultSplitRule: v }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SPLIT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select
+                value={editState.defaultSplitRule}
+                onValueChange={(v) => setEditState((s) => s && ({ ...s, defaultSplitRule: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SPLIT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 value={editState.keywordsHint}
                 maxLength={300}
@@ -159,7 +142,6 @@ export default function CategoryList({ categories }: { categories: CategoryDto[]
           <div key={c.id} className="flex items-center justify-between gap-3 py-1.5 border-b last:border-0 group">
             <p className="text-sm font-medium">{c.name}</p>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{BUCKET_LABELS[c.budgetBucket]}</Badge>
               <Badge variant="outline">{SPLIT_LABELS[c.defaultSplitRule]}</Badge>
               <Button
                 size="icon"

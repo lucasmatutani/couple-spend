@@ -13,7 +13,6 @@ import {
 type CategoryTableRow = {
   id: string
   name: string
-  budget_bucket: CategoryRow['budgetBucket']
   default_split_rule: CategoryRow['defaultSplitRule']
   household_id: string | null
   keywords_hint: string | null
@@ -23,7 +22,6 @@ function toCategoryRow(row: CategoryTableRow): CategoryRow {
   return {
     id: toCategoryId(row.id),
     name: row.name,
-    budgetBucket: row.budget_bucket,
     defaultSplitRule: row.default_split_rule,
     householdId: row.household_id ? toHouseholdId(row.household_id) : null,
     keywordsHint: row.keywords_hint,
@@ -65,7 +63,6 @@ export class SupabaseCategoryRepository implements CategoryRepository {
       .insert({
         household_id: input.householdId,
         name: input.name,
-        budget_bucket: input.budgetBucket,
         default_split_rule: input.defaultSplitRule,
         keywords_hint: input.keywordsHint,
         is_template: false,
@@ -84,7 +81,6 @@ export class SupabaseCategoryRepository implements CategoryRepository {
       .from('categories')
       .update({
         name: input.name,
-        budget_bucket: input.budgetBucket,
         default_split_rule: input.defaultSplitRule,
         keywords_hint: input.keywordsHint,
       })

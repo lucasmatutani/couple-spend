@@ -13,12 +13,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { createCategory } from './actions'
-import { BUCKET_OPTIONS, SPLIT_OPTIONS } from './categoryOptions'
+import { SPLIT_OPTIONS } from './categoryOptions'
 
 export default function CreateCategoryForm() {
   const router = useRouter()
   const [name, setName] = useState('')
-  const [budgetBucket, setBudgetBucket] = useState('needs')
   const [defaultSplitRule, setDefaultSplitRule] = useState('EQUAL')
   const [keywordsHint, setKeywordsHint] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,7 +30,6 @@ export default function CreateCategoryForm() {
 
     const result = await createCategory({
       name,
-      budgetBucket,
       defaultSplitRule,
       keywordsHint: keywordsHint || null,
     })
@@ -43,7 +41,6 @@ export default function CreateCategoryForm() {
     }
 
     setName('')
-    setBudgetBucket('needs')
     setDefaultSplitRule('EQUAL')
     setKeywordsHint('')
     router.refresh()
@@ -63,30 +60,16 @@ export default function CreateCategoryForm() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label>Tipo de orçamento</Label>
-          <Select value={budgetBucket} onValueChange={setBudgetBucket}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {BUCKET_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Divisão padrão</Label>
-          <Select value={defaultSplitRule} onValueChange={setDefaultSplitRule}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {SPLIT_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label>Divisão padrão</Label>
+        <Select value={defaultSplitRule} onValueChange={setDefaultSplitRule}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {SPLIT_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">

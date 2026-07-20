@@ -32,7 +32,7 @@ Core problems solved:
 - Support manual entry, OFX/CSV import, and (future) Open Finance connection.
 - Auto-categorize transactions with user-trainable rules.
 - Calculate income percentage spent per month, category breakdown, and 12-month surplus/investment projection.
-- Allow users to set budget goals per category bucket.
+- Allow users to set budget goals (minimum investment rate, minimum surplus).
 
 ### 2.2 Non-functional
 
@@ -65,10 +65,9 @@ Core problems solved:
 | `SplitRule`          | Defines how an Expense is divided among Household members. Variants: `EQUAL`, `ONLY_PAYER`, `ONLY_OTHER`, `CUSTOM(payer_percent)`. |
 | `RawTransaction`     | Internal DTO representing a transaction **independent of source**. All import adapters must produce this type.                       |
 | `TransactionSource`  | Port (interface) abstracting where transactions come from. Implementations: OFX, CSV, Open Finance, manual.                         |
-| `Goal`               | A monthly/annual budget goal (e.g. spend max 30% on wants, invest min 20% of income).                                              |
+| `Goal`               | A monthly/annual budget goal (e.g. invest min 20% of income, keep min 10% surplus). Variants: `MIN_SAVINGS`, `MIN_SURPLUS`.        |
 | `Settlement`         | Immutable monthly snapshot of who owes what to whom within a Household.                                                             |
 | `FITID`              | Unique transaction identifier in the OFX standard. Used for deduplication on import.                                                |
-| `BudgetBucket`       | Classification of a category: `needs`, `wants`, `savings`. Maps to the 50/30/20 rule.                                              |
 | `Plan`               | Subscription tier (`free`, `pro`, `family`). Controls household member limits, import history depth, and feature access.            |
 
 ## 4. Product vision
@@ -186,7 +185,7 @@ src/
         manual/
         open-finance/  # Future (Phase 5)
     categorization/    # Resolver chain (rules → memory → llm)
-    budgeting/         # % of income, 50/30/20 rule, goals
+    budgeting/         # % of income, surplus/investment goals
     projection/        # 12-month projection
     billing/           # Stripe integration, plan enforcement
   shared/
@@ -533,7 +532,6 @@ create table categories (
   household_id    uuid references households(id),  -- null = global template
   parent_id       uuid references categories(id),
   name            text not null,
-  budget_bucket   text not null check (budget_bucket in ('needs', 'wants', 'savings')),
   default_split_rule text not null,
   is_template     boolean not null default false
 );
@@ -606,7 +604,7 @@ create table category_memory (
 create table goals (
   id              uuid primary key default gen_random_uuid(),
   owner_id        uuid not null references users(id),
-  goal_type       text not null check (goal_type in ('MAX_NEEDS', 'MAX_WANTS', 'MIN_SAVINGS', 'MIN_SURPLUS')),
+  goal_type       text not null check (goal_type in ('MIN_SAVINGS', 'MIN_SURPLUS')),
   target_percent  int not null check (target_percent between 0 and 100),
   applies_to_month date,  -- null = recurring
   created_at      timestamptz default now()
@@ -993,20 +991,28 @@ splitwise/
 
 ### 15.1 Default category templates (global seed)
 
-| Category           | Budget bucket | Default split rule |
-| ------------------ | ------------- | ------------------ |
-| Housing            | needs         | EQUAL              |
-| Utilities          | needs         | EQUAL              |
-| Groceries          | needs         | EQUAL              |
-| Transport          | needs         | EQUAL              |
-| Health             | needs         | EQUAL              |
-| Education          | needs         | EQUAL              |
-| Subscriptions      | wants         | (varies)           |
-| Entertainment      | wants         | (individual)       |
-| Clothing           | wants         | (individual)       |
-| Dining out         | wants         | EQUAL              |
-| Investments        | savings       | n/a (not expense)  |
-| Refunds            | n/a           | n/a                |
-| Other              | (unset)       | (unset)            |
+| Category           | Default split rule |
+| ------------------ | ------------------ |
+| Housing            | EQUAL              |
+| Utilities          | EQUAL              |
+| Groceries          | EQUAL              |
+| Transport          | EQUAL              |
+| Health             | EQUAL              |
+| Education          | EQUAL              |
+| Subscriptions      | (varies)           |
+| Entertainment      | (individual)       |
+| Clothing           | (individual)       |
+| Dining out         | EQUAL              |
+| Investments        | n/a (not expense)  |
+| Refunds            | n/a                |
+| Other              | (unset)             |
 
 These are **templates** seeded globally. Each household can create custom sub-categories (e.g. `Education > Daycare`, `Health > Gym`).
+
+The "Investments" template category is a historical leftover with zero expense
+rows referencing it — real investments are tracked via the separate
+Investments feature (`investments` table), not as a personal-expense
+category. Categories no longer carry a budget classification at all
+(`budget_bucket` was removed in migration 024, along with the `MAX_NEEDS`/
+`MAX_WANTS` goal types it fed) — consider removing this template entirely if
+it keeps causing confusion.

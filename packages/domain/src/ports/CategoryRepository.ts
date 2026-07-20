@@ -3,7 +3,6 @@ import { type CategoryId, type HouseholdId } from '../kernel/ids.js'
 export type CategoryRow = {
   id: CategoryId
   name: string
-  budgetBucket: 'needs' | 'wants' | 'savings'
   defaultSplitRule: 'EQUAL' | 'ONLY_PAYER' | 'ONLY_OTHER' | 'CUSTOM'
   householdId: HouseholdId | null
   keywordsHint: string | null
@@ -12,14 +11,12 @@ export type CategoryRow = {
 export type NewCategoryInput = {
   householdId: HouseholdId
   name: string
-  budgetBucket: 'needs' | 'wants' | 'savings'
   defaultSplitRule: 'EQUAL' | 'ONLY_PAYER' | 'ONLY_OTHER' | 'CUSTOM'
   keywordsHint: string | null
 }
 
 export type CategoryUpdateInput = {
   name: string
-  budgetBucket: 'needs' | 'wants' | 'savings'
   defaultSplitRule: 'EQUAL' | 'ONLY_PAYER' | 'ONLY_OTHER' | 'CUSTOM'
   keywordsHint: string | null
 }

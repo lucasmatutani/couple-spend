@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto'
 type ActionResult = { success: true } | { success: false; error: string }
 
 const addGoalSchema = z.object({
-  goalType: z.enum(['MAX_NEEDS', 'MAX_WANTS', 'MIN_SAVINGS', 'MIN_SURPLUS']),
+  goalType: z.enum(['MIN_SAVINGS', 'MIN_SURPLUS']),
   targetPercent: z.coerce.number().int().min(0).max(100),
   appliesToMonth: z.string().optional(),
 })

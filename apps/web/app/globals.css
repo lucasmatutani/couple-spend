@@ -30,7 +30,6 @@
     --color-warning: 38 95% 48%;
     --color-needs: 217 91% 54%;
     --color-wants: 38 95% 48%;
-    --color-savings: 152 69% 36%;
   }
 
   .dark {
@@ -59,7 +58,6 @@
     --color-warning: 38 95% 55%;
     --color-needs: 217 91% 62%;
     --color-wants: 38 95% 55%;
-    --color-savings: 152 69% 45%;
   }
 }
 

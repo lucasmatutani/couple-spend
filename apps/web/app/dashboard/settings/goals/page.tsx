@@ -10,8 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 const GOAL_LABELS: Record<GoalType, string> = {
-  MAX_NEEDS: 'Limite — necessidades',
-  MAX_WANTS: 'Limite — desejos',
   MIN_SAVINGS: 'Meta — investimentos',
   MIN_SURPLUS: 'Meta — sobra',
 }
@@ -79,7 +77,7 @@ export default async function GoalsPage() {
                   <div className="space-y-0.5">
                     <p className="text-sm font-medium">{GOAL_LABELS[goal.goalType]}</p>
                     <p className="text-xs text-muted-foreground">
-                      {goal.goalType.startsWith('MAX_') ? 'Máx' : 'Mín'}: {goal.targetPercent}%
+                      Mín: {goal.targetPercent}%
                       {goal.appliesToMonth
                         ? ` · ${goal.appliesToMonth.toString()}`
                         : ' · recorrente'}

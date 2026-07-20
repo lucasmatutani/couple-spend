@@ -42,20 +42,20 @@ INSERT INTO "public"."households" ("id", "name", "created_by", "created_at") VAL
 -- Data for Name: categories; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."categories" ("id", "household_id", "parent_id", "name", "budget_bucket", "default_split_rule", "is_template") VALUES
-	('995a6b3b-3ca9-4804-95bb-15a3324b1872', NULL, NULL, 'Moradia', 'needs', 'EQUAL', true),
-	('ecb12d66-1db9-4a78-9a72-353aad218916', NULL, NULL, 'Serviços', 'needs', 'EQUAL', true),
-	('da295923-d0a5-42e5-aed7-0bb942908b41', NULL, NULL, 'Mercado', 'needs', 'EQUAL', true),
-	('c172b93f-fcc4-4e99-928d-06f3a62b87e3', NULL, NULL, 'Transporte', 'needs', 'EQUAL', true),
-	('8f811712-0c4b-497a-8c04-d1ee00c066cd', NULL, NULL, 'Saúde', 'needs', 'EQUAL', true),
-	('0207d087-6ead-49d5-b9c7-f3bfa0aa16e5', NULL, NULL, 'Educação', 'needs', 'EQUAL', true),
-	('8ce03819-3c1e-4a80-8ca5-14c5aec1742a', NULL, NULL, 'Assinaturas', 'wants', 'EQUAL', true),
-	('352f77df-7fd7-4b33-a01a-59b15b506b10', NULL, NULL, 'Lazer', 'wants', 'ONLY_PAYER', true),
-	('16c8cce3-932b-487e-b1f4-bef124663091', NULL, NULL, 'Roupas', 'wants', 'ONLY_PAYER', true),
-	('bef08180-bd14-4a92-b626-7e61ffa184c9', NULL, NULL, 'Restaurantes', 'wants', 'EQUAL', true),
-	('3a83df18-f7cc-4d66-a0d3-d638e78bc2fa', NULL, NULL, 'Investimentos', 'savings', 'EQUAL', true),
-	('14a98d0e-adc0-4d9d-ac3b-5fc0c3fae2b6', NULL, NULL, 'Reembolsos', 'needs', 'EQUAL', true),
-	('1bea3c49-554b-4a30-93c9-6da171d7197e', NULL, NULL, 'Outros', 'needs', 'EQUAL', true);
+INSERT INTO "public"."categories" ("id", "household_id", "parent_id", "name", "default_split_rule", "is_template") VALUES
+	('995a6b3b-3ca9-4804-95bb-15a3324b1872', NULL, NULL, 'Moradia', 'EQUAL', true),
+	('ecb12d66-1db9-4a78-9a72-353aad218916', NULL, NULL, 'Serviços', 'EQUAL', true),
+	('da295923-d0a5-42e5-aed7-0bb942908b41', NULL, NULL, 'Mercado', 'EQUAL', true),
+	('c172b93f-fcc4-4e99-928d-06f3a62b87e3', NULL, NULL, 'Transporte', 'EQUAL', true),
+	('8f811712-0c4b-497a-8c04-d1ee00c066cd', NULL, NULL, 'Saúde', 'EQUAL', true),
+	('0207d087-6ead-49d5-b9c7-f3bfa0aa16e5', NULL, NULL, 'Educação', 'EQUAL', true),
+	('8ce03819-3c1e-4a80-8ca5-14c5aec1742a', NULL, NULL, 'Assinaturas', 'EQUAL', true),
+	('352f77df-7fd7-4b33-a01a-59b15b506b10', NULL, NULL, 'Lazer', 'ONLY_PAYER', true),
+	('16c8cce3-932b-487e-b1f4-bef124663091', NULL, NULL, 'Roupas', 'ONLY_PAYER', true),
+	('bef08180-bd14-4a92-b626-7e61ffa184c9', NULL, NULL, 'Restaurantes', 'EQUAL', true),
+	('3a83df18-f7cc-4d66-a0d3-d638e78bc2fa', NULL, NULL, 'Investimentos', 'EQUAL', true),
+	('14a98d0e-adc0-4d9d-ac3b-5fc0c3fae2b6', NULL, NULL, 'Reembolsos', 'EQUAL', true),
+	('1bea3c49-554b-4a30-93c9-6da171d7197e', NULL, NULL, 'Outros', 'EQUAL', true);
 
 
 --

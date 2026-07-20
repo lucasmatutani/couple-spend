@@ -14,18 +14,12 @@ function makeBudget(overrides: Partial<{
   totalSpentCents: number
   totalInvestedCents: number
   surplusCents: number
-  pctNeeds: number
-  pctWants: number
-  pctSavings: number
   pctInvested: number
 }>): IndividualBudgetSummary {
   const inc = overrides.totalIncomeCents ?? 100000
   const spent = overrides.totalSpentCents ?? 0
   const invested = overrides.totalInvestedCents ?? 0
   const surplus = overrides.surplusCents ?? (inc - spent - invested)
-  const pctNeeds = overrides.pctNeeds ?? 0
-  const pctWants = overrides.pctWants ?? 0
-  const pctSavings = overrides.pctSavings ?? 0
   const pctInvested = overrides.pctInvested ?? (inc > 0 ? invested / inc : 0)
 
   return {
@@ -37,7 +31,6 @@ function makeBudget(overrides: Partial<{
     surplus: Money.of(surplus),
     pctSpent: inc > 0 ? spent / inc : 0,
     pctInvested,
-    pctByBucket: { needs: pctNeeds, wants: pctWants, savings: pctSavings },
   }
 }
 
@@ -47,45 +40,6 @@ function makeGoal(goalType: Goal['goalType'], targetPercent: number): Goal {
 
 describe('EvaluateGoalsUseCase', () => {
   const uc = new EvaluateGoalsUseCase()
-
-  describe('MAX_NEEDS', () => {
-    it('on_track when actual is well below limit', () => {
-      // target 50%, actual 30% → 0.30 < 0.50 * 0.8 = 0.40
-      const budget = makeBudget({ pctNeeds: 0.30 })
-      const [ev] = uc.execute(budget, [makeGoal('MAX_NEEDS', 50)])
-      expect(ev!.status).toBe('on_track')
-      expect(ev!.actual).toBeCloseTo(0.30)
-      expect(ev!.target).toBeCloseTo(0.50)
-    })
-
-    it('at_risk when actual approaches limit', () => {
-      // target 50%, actual 42% → 0.42 >= 0.50 * 0.8 = 0.40 but < 0.50
-      const budget = makeBudget({ pctNeeds: 0.42 })
-      const [ev] = uc.execute(budget, [makeGoal('MAX_NEEDS', 50)])
-      expect(ev!.status).toBe('at_risk')
-    })
-
-    it('exceeded when actual >= target', () => {
-      // target 50%, actual 55%
-      const budget = makeBudget({ pctNeeds: 0.55 })
-      const [ev] = uc.execute(budget, [makeGoal('MAX_NEEDS', 50)])
-      expect(ev!.status).toBe('exceeded')
-    })
-  })
-
-  describe('MAX_WANTS', () => {
-    it('on_track when actual is well below limit', () => {
-      const budget = makeBudget({ pctWants: 0.10 })
-      const [ev] = uc.execute(budget, [makeGoal('MAX_WANTS', 30)])
-      expect(ev!.status).toBe('on_track')
-    })
-
-    it('exceeded when actual >= target', () => {
-      const budget = makeBudget({ pctWants: 0.35 })
-      const [ev] = uc.execute(budget, [makeGoal('MAX_WANTS', 30)])
-      expect(ev!.status).toBe('exceeded')
-    })
-  })
 
   describe('MIN_SAVINGS', () => {
     it('on_track when actual is comfortably above minimum', () => {
@@ -127,11 +81,11 @@ describe('EvaluateGoalsUseCase', () => {
   })
 
   it('evaluates multiple goals independently', () => {
-    const budget = makeBudget({ pctNeeds: 0.60, pctInvested: 0.25 })
-    const goals = [makeGoal('MAX_NEEDS', 50), makeGoal('MIN_SAVINGS', 20)]
+    const budget = makeBudget({ pctInvested: 0.25, surplusCents: 5000 })
+    const goals = [makeGoal('MIN_SURPLUS', 20), makeGoal('MIN_SAVINGS', 20)]
     const evals = uc.execute(budget, goals)
     expect(evals).toHaveLength(2)
-    expect(evals[0]!.status).toBe('exceeded')  // MAX_NEEDS: 60% > 50%
-    expect(evals[1]!.status).toBe('on_track')  // MIN_SAVINGS: 25% > 20% * 1.2 = 24%
+    expect(evals[0]!.status).toBe('exceeded')   // MIN_SURPLUS: 5% < 20%
+    expect(evals[1]!.status).toBe('on_track')   // MIN_SAVINGS: 25% > 20% * 1.2 = 24%
   })
 })
