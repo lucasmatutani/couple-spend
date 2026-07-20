@@ -273,6 +273,8 @@ Expected PR diff: new files in `packages/import-<name>/` + changes in `apps/web/
 - **Do not commit `.env`** — use `.env.local` (gitignored) and `.env.example` (versioned, fake values).
 - **Do not run migrations in production manually.** GitHub Actions + Supabase CLI on deploy.
 - **Do not write Portuguese in code.** UI strings are the only exception.
+- **Do not run databse reset**.
+- **Do not use seed data for test.** The environment is already used.
 
 ---
 

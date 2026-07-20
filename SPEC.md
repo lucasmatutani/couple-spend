@@ -996,6 +996,7 @@ splitwise/
 | Housing            | EQUAL              |
 | Utilities          | EQUAL              |
 | Groceries          | EQUAL              |
+| Food               | EQUAL              |
 | Transport          | EQUAL              |
 | Health             | EQUAL              |
 | Education          | EQUAL              |

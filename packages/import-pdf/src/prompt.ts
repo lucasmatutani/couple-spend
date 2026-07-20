@@ -8,6 +8,7 @@ const CATEGORY_HINTS: Record<string, string> = {
   Moradia: 'aluguel, condomínio, financiamento, IPTU',
   Serviços: 'energia elétrica, água, gás, internet, telefone, CPFL, Vivo, Claro, Tim',
   Mercado: 'supermercado, mercado, Carrefour, Pão de Açúcar, Atacadão, hortifruti',
+  Alimentação: 'padaria, açougue, feira, hortifruti, lanchonete rápida, food truck',
   Transporte: 'Uber, 99, combustível, gasolina, estacionamento, pedágio, metrô, taxi',
   Saúde: 'farmácia, drogaria, hospital, clínica, médico, dentista, Droga Raia, Drogasil',
   Educação: 'escola, faculdade, curso, livro, Udemy, Coursera, mensalidade',

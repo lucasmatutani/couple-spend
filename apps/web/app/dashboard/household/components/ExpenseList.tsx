@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Pencil, Repeat, Trash2 } from 'lucide-react'
+import { ChartPie, Pencil, Repeat, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -27,6 +34,7 @@ import { deleteExpense } from '../actions'
 import { deleteExpenseFuture } from '../recurring-actions'
 import type { CategoryDto, ExpenseDto } from '../types'
 import EditExpenseSheet from './EditExpenseSheet'
+import HouseholdCategoryChart from './HouseholdCategoryChart'
 
 const SPLIT_LABELS: Record<string, string> = {
   EQUAL: 'Igual',
@@ -58,6 +66,20 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
   const [editScope, setEditScope] = useState<'single' | 'future' | null>(null)
   const [scopeIntent, setScopeIntent] = useState<ScopeIntent | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [chartOpen, setChartOpen] = useState(false)
+
+  const categoryFilterOptions = useMemo(
+    () =>
+      Array.from(new Map(expenses.map((e) => [e.categoryId, e.categoryName])).entries())
+        .sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')),
+    [expenses],
+  )
+
+  const filteredExpenses = useMemo(
+    () => (categoryFilter === 'all' ? expenses : expenses.filter((e) => e.categoryId === categoryFilter)),
+    [expenses, categoryFilter],
+  )
 
   // Simple delete (non-recurring or scope='single')
   async function handleDeleteConfirmed() {
@@ -103,6 +125,30 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
 
   return (
     <>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Todas as categorias" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as categorias</SelectItem>
+            {categoryFilterOptions.map(([id, name]) => (
+              <SelectItem key={id} value={id}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setChartOpen(true)}>
+          <ChartPie className="h-3.5 w-3.5" />
+          Ver por categoria
+        </Button>
+      </div>
+
+      {filteredExpenses.length === 0 ? (
+        <div className="py-12 text-center text-muted-foreground">
+          <p>Nenhuma despesa nessa categoria neste mês.</p>
+        </div>
+      ) : (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -121,7 +167,7 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
             variants={tbodyVariants}
             className="[&_tr:last-child]:border-0"
           >
-            {expenses.map((expense) => (
+            {filteredExpenses.map((expense) => (
               <motion.tr
                 key={expense.id}
                 variants={rowVariants}
@@ -160,6 +206,13 @@ export default function ExpenseList({ expenses, categories, householdId }: Props
           </motion.tbody>
         </Table>
       </div>
+      )}
+
+      <HouseholdCategoryChart
+        open={chartOpen}
+        onClose={() => setChartOpen(false)}
+        expenses={expenses}
+      />
 
       {/* Scope dialog for recurring expenses */}
       {scopeIntent && (
