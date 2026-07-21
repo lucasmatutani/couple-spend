@@ -65,6 +65,16 @@ export default function AddExpenseSheet({ householdId, categories, currentUserNa
     categoryId: categories[0]?.id ?? '',
   })
 
+  function handleOpenChange(next: boolean) {
+    if (next) {
+      // The sheet can stay mounted across a month-navigation client-side route
+      // change, so re-sync the default date to the month currently in the URL
+      // instead of trusting the value captured at first mount.
+      setForm((prev) => ({ ...prev, occurredAt: defaultDateForMonth(currentMonth) }))
+    }
+    setOpen(next)
+  }
+
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -110,7 +120,7 @@ export default function AddExpenseSheet({ householdId, categories, currentUserNa
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
