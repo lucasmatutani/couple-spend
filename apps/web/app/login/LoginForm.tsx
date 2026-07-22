@@ -18,7 +18,7 @@ interface LoginFormProps {
 export default function LoginForm({ next }: LoginFormProps) {
   const router = useRouter()
 
-  const [mode, setMode] = useState<Mode>('magic-link')
+  const [mode, setMode] = useState<Mode>('password')
   const [view, setView] = useState<View>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -249,17 +249,6 @@ export default function LoginForm({ next }: LoginFormProps) {
         <div className="flex rounded-lg border p-1 gap-1">
           <button
             type="button"
-            onClick={() => switchMode('magic-link')}
-            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === 'magic-link'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Link mágico
-          </button>
-          <button
-            type="button"
             onClick={() => switchMode('password')}
             className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === 'password'
@@ -268,6 +257,17 @@ export default function LoginForm({ next }: LoginFormProps) {
             }`}
           >
             Senha
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode('magic-link')}
+            className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === 'magic-link'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Link mágico
           </button>
         </div>
 
